@@ -18,6 +18,20 @@ export type FiberRoot = {
 }
 
 export type Fiber = {
+  pendingProps: any
+  memoizedProps: any
+  /**
+   *其子节点为单链表结构child指向了他的第一个子节点后续子节点可通过child.sibling获得
+   */
+  child: Fiber | null
+
+  /**
+   * 该fiber节点的兄弟节点，他们都有着同一个父fiber节点
+   */
+  sibling: Fiber | null
+  /**
+   * 从update计算而来的状态
+   */
   memoizedState: any
   /**
    * 该fiber节点对于的相关节点(类组件为为类实例，dom组件为dom节点)
@@ -45,6 +59,12 @@ export type Fiber = {
    * 用来标识该fiber节点,用于多节点children进行diff时优化时间复杂度
    */
   key: string | null
+
+  /**
+   * 如果是自定义组件则该属性就是和该fiber节点关联的function或class
+   * 如果是div,span则就是一个字符串
+   */
+  type: any
 
   /**
    * 描述fiber节点及其子树属性BitSet

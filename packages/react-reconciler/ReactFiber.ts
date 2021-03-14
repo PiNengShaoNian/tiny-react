@@ -1,12 +1,18 @@
+import { ReactElement } from '../shared/ReactTypes'
 import { Fiber } from './ReactInternalTypes'
 import { ConcurrentRoot, RootTag } from './ReactRootTags'
+import {
+  WorkTag,
+  HostRoot,
+  IndeterminateComponent,
+  HostComponent,
+} from './ReactWorkTags'
 import {
   BlockingMode,
   ConcurrentMode,
   NoMode,
   TypeOfMode,
 } from './ReactTypeOfMode'
-import { WorkTag, HostRoot } from './ReactWorkTags'
 
 class FiberNode {
   stateNode: any = null
@@ -14,6 +20,10 @@ class FiberNode {
   return: Fiber | null = null
   alternate: Fiber | null = null
   memoizedState: any = null
+  child: Fiber | null = null
+  sibling: Fiber | null = null
+  type: any = null
+  memoizedProps: any = null
 
   constructor(
     public tag: WorkTag,
@@ -77,4 +87,35 @@ export const createWorkInProgress = (
   workInProgress.updateQueue = current.updateQueue
 
   return workInProgress
+}
+
+export const createFiberFromTypeAndProps = (
+  type: any,
+  key: null | string,
+  pendingProps: any,
+  mode: TypeOfMode
+) => {
+  let fiberTag: WorkTag = IndeterminateComponent
+
+  if (typeof type === 'function') {
+  } else if (typeof type === 'string') {
+    fiberTag = HostComponent
+  }
+
+  const fiber = createFiber(fiberTag, pendingProps, key, mode)
+  fiber.type = type
+  return fiber
+}
+
+export const createFiberFromElement = (
+  element: ReactElement,
+  mode: TypeOfMode
+): Fiber => {
+  const type = element.type
+  const key = element.key as any
+  const pendingProps = element.props
+
+  const fiber = createFiberFromTypeAndProps(type, key, pendingProps, mode)
+
+  return fiber
 }

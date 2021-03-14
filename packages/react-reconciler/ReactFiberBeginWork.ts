@@ -1,6 +1,14 @@
+import { shouldSetTextContent } from './ReactFiberHostConfig'
+import { mountChildFibers } from './ReactChildFiber'
+import { renderWithHooks } from './ReactFiberHooks'
 import { Fiber } from './ReactInternalTypes'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
-import { HostRoot } from './ReactWorkTags'
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  IndeterminateComponent,
+} from './ReactWorkTags'
 
 /**
  * 更新HostRoot节点
@@ -10,7 +18,70 @@ import { HostRoot } from './ReactWorkTags'
  */
 const updateHostRoot = (current: Fiber, workInProgress: Fiber) => {
   cloneUpdateQueue(current, workInProgress)
+  //当第一次mount时payload为 {element: jsx对象}
+  const prevState = workInProgress.memoizedState
+  const prevChildren = prevState !== null ? prevState.element : null
+  //HostRoot的pendingProps为null
+  const nextProps = workInProgress.pendingProps
   processUpdateQueue(workInProgress, nextProps, null)
+  const nextState = workInProgress.memoizedState
+
+  const nextChildren = nextState.element
+
+  if (nextChildren === prevChildren) {
+    //todo 前后jsx对象没有变
+    return null
+  }
+
+  const child = mountChildFibers(workInProgress, null, nextChildren)
+
+  workInProgress.child = child
+
+  return workInProgress.child
+}
+
+const reconcileChildren = (
+  current: Fiber | null,
+  workInProgress: Fiber,
+  nextChildren: any
+) => {
+  if (current === null) {
+    workInProgress.child = mountChildFibers(workInProgress, null, nextChildren)
+  } else {
+    //todo update
+  }
+}
+
+const mountIndeterminateComponent = (
+  current: Fiber | null,
+  workInProgress: Fiber,
+  Component: any
+): Fiber | null => {
+  const props = workInProgress.pendingProps
+  const value = renderWithHooks(current, workInProgress, Component, props, null)
+
+  workInProgress.tag = FunctionComponent
+  reconcileChildren(null, workInProgress, value)
+
+  return workInProgress.child
+}
+
+const updateHostComponent = (current: Fiber | null, workInProgress: Fiber) => {
+  const type = workInProgress.type
+  const nextProps = workInProgress.pendingProps
+  const prevProps = current !== null ? current.memoizedProps : null
+
+  let nextChildren = nextProps.children
+  //子节点是否可以直接设置成字符串而不用继续reconcile
+  const isDirectTextChild = shouldSetTextContent(type, nextProps)
+
+  if (isDirectTextChild) {
+    nextChildren = null
+  } else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {
+    // workInProgress.flags |= ContentRest
+  }
+
+  reconcileChildren(current, workInProgress, nextChildren)
   return workInProgress.child
 }
 
@@ -30,11 +101,21 @@ export const beginWork = (
   }
 
   switch (workInProgress.tag) {
+    case IndeterminateComponent: {
+      //在mount时FunctionComponent是按indeterminate处理的
+      return mountIndeterminateComponent(
+        current,
+        workInProgress,
+        workInProgress.type
+      )
+    }
     case HostRoot: {
       //HostRoot类型current,workInProgress一定会同时存在
       return updateHostRoot(current!, workInProgress)
     }
+    case HostComponent:
+      return updateHostComponent(current, workInProgress)
   }
 
-  return null
+  throw new Error('Not Implement')
 }

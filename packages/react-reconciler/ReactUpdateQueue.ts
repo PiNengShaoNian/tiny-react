@@ -142,10 +142,12 @@ export const processUpdateQueue = <State>(
 ) => {
   const queue: UpdateQueue<State> = workInProgress.updateQueue as any
 
-  let pendingQueue = queue.shared.pending
-
+  
   let firstBaseUpdate = queue.firstBaseUpdate
   let lastBaseUpdate = queue.lastBaseUpdate
+  
+  //检测shared.pending是否存在进行中的update将他们转移到baseQueue
+  let pendingQueue = queue.shared.pending
   if (pendingQueue !== null) {
     queue.shared.pending = null
 
@@ -154,6 +156,7 @@ export const processUpdateQueue = <State>(
     //断开最后一个update和第一个update之间的连接
     lastPendingUpdate.next = null
 
+    //将shared.pending上的update接到baseUpdate链表上
     if (lastBaseUpdate === null) {
       firstBaseUpdate = firstPendingUpdate
     } else {
@@ -162,6 +165,7 @@ export const processUpdateQueue = <State>(
 
     lastBaseUpdate = lastPendingUpdate
 
+    //如果current存在则进行相同的工作
     const current = workInProgress.alternate
     if (current !== null) {
       const currentQueue: UpdateQueue<State> = current.updateQueue as any
@@ -188,6 +192,7 @@ export const processUpdateQueue = <State>(
     let update: Update | null = firstBaseUpdate
 
     do {
+      //暂时假设，所有更新都是一样的优先级，每次都从所有update计算状态
       newState = getStateFromUpdate(
         workInProgress,
         queue,
@@ -216,6 +221,18 @@ export const processUpdateQueue = <State>(
         }
       }
     } while (true)
+
+    //暂时没有会被跳过的update始终不成立
+    if (newLastBaseUpdate === null) {
+      newBaseState = newState
+    }
+
+    queue.baseState = newBaseState as any
+
+    queue.firstBaseUpdate = newFirstBaseUpdate
+    queue.lastBaseUpdate = newLastBaseUpdate
+
+    workInProgress.memoizedState = newState
   }
 }
 

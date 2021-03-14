@@ -1,5 +1,6 @@
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
+import { completeWork } from './ReactFiberCompleteWork'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { HostRoot } from './ReactWorkTags'
 
@@ -13,12 +14,52 @@ let workInProgressRoot: FiberRoot | null = null
  */
 let workInProgress: Fiber | null = null
 
+const completeUnitOfWork = (unitOfWork: Fiber): void => {
+  let completedWork: Fiber | null = unitOfWork
+
+  do {
+    const current = completedWork.alternate
+
+    const returnFiber: Fiber | null = completedWork.return
+
+    let next = completeWork(current, completedWork)
+
+    // if (next !== null) {
+    //   //// Something suspended. Re-render with the fallback children.
+    //   workInProgress = next
+    //   return
+    // }
+
+    const siblingFiber = completedWork.sibling
+
+    //由于是前序遍历，当一个节点的"归阶段"完成后立马进入其下一个兄弟节点的递阶段
+    if (siblingFiber !== null) {
+      workInProgress = siblingFiber
+      return
+    }
+
+    //returnFiber的所有子节点都完成递和归阶段，接下来到returnFiber的归阶段了
+    completedWork = returnFiber
+    workInProgress = completedWork
+  } while (completedWork !== null)
+}
+
 const performUnitOfWork = (unitOfWork: Fiber): void => {
   const current = unitOfWork.alternate
 
   let next: Fiber | null = null
 
+  //创建或者reconcile unitOfWork.child并将其返回
   next = beginWork(current, unitOfWork)
+
+  //进行的时前序遍历，next为null说明该节点没有子节点了，对其进行归过程
+  if (next === null) {
+    //todo completeUnitofWork
+    completeUnitOfWork(unitOfWork)
+  } else {
+    //将workInProgress赋值为unitOfWork的第一个子节点
+    workInProgress = next
+  }
 }
 
 /**
@@ -39,6 +80,7 @@ const renderRootSync = (root: FiberRoot) => {
   }
 
   while (workInProgress !== null) {
+    debugger
     performUnitOfWork(workInProgress)
   }
 }
