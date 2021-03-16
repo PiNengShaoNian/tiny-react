@@ -6,6 +6,7 @@ import {
   HostRoot,
   IndeterminateComponent,
   HostComponent,
+  HostText,
 } from './ReactWorkTags'
 import {
   BlockingMode,
@@ -28,6 +29,7 @@ class FiberNode {
   flags: Flags = 0
   subtreeFlags: Flags = 0
   deletions: Fiber[] | null = null
+  index: number = 0
 
   constructor(
     public tag: WorkTag,
@@ -120,6 +122,21 @@ export const createFiberFromElement = (
   const pendingProps = element.props
 
   const fiber = createFiberFromTypeAndProps(type, key, pendingProps, mode)
+
+  return fiber
+}
+
+/**
+ * 创建一个HostText类型的Fiber节点
+ * @param content 会作为pendingProps
+ * @param mode
+ * @returns
+ */
+export const createFiberFromText = (
+  content: string,
+  mode: TypeOfMode
+): Fiber => {
+  const fiber = createFiber(HostText, content, null, mode)
 
   return fiber
 }

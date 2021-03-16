@@ -1383,6 +1383,8 @@
 	  _defineProperty(this, "subtreeFlags", 0);
 
 	  _defineProperty(this, "deletions", null);
+
+	  _defineProperty(this, "index", 0);
 	};
 	/**
 	 *
@@ -1440,6 +1442,17 @@
 	  var key = element.key;
 	  var pendingProps = element.props;
 	  var fiber = createFiberFromTypeAndProps(type, key, pendingProps, mode);
+	  return fiber;
+	};
+	/**
+	 * 创建一个HostText类型的Fiber节点
+	 * @param content 会作为pendingProps
+	 * @param mode
+	 * @returns
+	 */
+
+	var createFiberFromText = function createFiberFromText(content, mode) {
+	  var fiber = createFiber(HostText, content, null, mode);
 	  return fiber;
 	};
 
@@ -2328,6 +2341,10 @@
 
 	  return false;
 	};
+	var createTextInstance = function createTextInstance(text) {
+	  var instance = document.createTextNode(text);
+	  return instance;
+	};
 
 	// `Array.isArray` method
 	// https://tc39.es/ecma262/#sec-array.isarray
@@ -2387,13 +2404,84 @@
 	    return null;
 	  };
 
+	  var placeChild = function placeChild(newFiber, lastPlacedIndex, newIndex) {
+	    newFiber.index = newIndex;
+	    if (!shouldTrackSideEffects) return lastPlacedIndex;
+	    throw new Error('Not Implement');
+	  };
+
+	  var createChild = function createChild(returnFiber, newChild) {
+	    if (typeof newChild === 'string' || typeof newChild === 'number') {
+	      var created = createFiberFromText('' + newChild, returnFiber.mode);
+	      created["return"] = returnFiber;
+	      return created;
+	    }
+
+	    if (_typeof(newChild) === 'object' && newChild !== null) {
+	      switch (newChild.$$typeof) {
+	        case REACT_ELEMENT_TYPE:
+	          {
+	            var _created = createFiberFromElement(newChild, returnFiber.mode);
+
+	            _created["return"] = returnFiber;
+	            return _created;
+	          }
+	      }
+	    }
+
+	    throw new Error('Not Implement');
+	  };
+
 	  var reconcileChildrenArray = function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
-	    return null;
+	    var resultingFirstChild = null;
+	    var previousNewFiber = null;
+	    var oldFiber = currentFirstChild;
+	    var lastPlacedIndex = 0;
+	    var newIdx = 0;
+	    //   nextOldFiber = oldFiber.sibling
+	    //   const newFiber = updateSlot(returnFiber, oldFiber, newChildren[newIdx])
+	    //   if (newFiber === null) {
+	    //     break
+	    //   }
+	    //   if (shouldTrackSideEffects) {
+	    //   }
+	    //   lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx)
+	    //   if (previousNewFiber === null) {
+	    //     resultingFirstChild = newFiber
+	    //   } else {
+	    //     previousNewFiber.sibling = newFiber
+	    //   }
+	    //   previousNewFiber = newFiber
+	    //   oldFiber = nextOldFiber
+	    // }
+	    // if (newIdx === newChildren.length) {
+	    //   deleteRemainingChildren(returnFiber, oldFiber)
+	    //   return resultingFirstChild
+	    // }
+
+	    if (oldFiber === null) {
+	      for (; newIdx < newChildren.length; ++newIdx) {
+	        var newFiber = createChild(returnFiber, newChildren[newIdx]);
+	        if (newFiber === null) continue;
+	        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+
+	        if (previousNewFiber === null) {
+	          resultingFirstChild = newFiber;
+	        } else {
+	          previousNewFiber.sibling = newFiber;
+	        }
+
+	        previousNewFiber = newFiber;
+	      }
+
+	      return resultingFirstChild;
+	    }
+
+	    throw new Error('Not Implement');
 	  };
 
 	  var reconcileChildFibers = function reconcileChildFibers(returnFiber, currentFirstChild, newChild) {
 	    var isObject = _typeof(newChild) === 'object' && newChild !== null;
-	    debugger;
 
 	    if (isObject) {
 	      switch (newChild.$$typeof) {
@@ -2405,7 +2493,7 @@
 	    }
 
 	    if (isArray$4(newChild)) {
-	      return reconcileChildrenArray(returnFiber, currentFirstChild, newChildren);
+	      return reconcileChildrenArray(returnFiber, currentFirstChild, newChild);
 	    } //newChild为空删除现有fiber节点
 
 
@@ -2508,6 +2596,9 @@
 
 	    case HostComponent:
 	      return updateHostComponent(current, workInProgress);
+
+	    case HostText:
+	      return null;
 	  }
 
 	  throw new Error('Not Implement');
@@ -2818,6 +2909,9 @@
 	    }
 
 	    completedWork.subtreeFlags |= subtreeFlags;
+	  } else {
+	    //todo
+	    throw new Error('Not Implement');
 	  }
 
 	  return didBailout;
@@ -2843,7 +2937,10 @@
 	      {
 	        var type = workInProgress.type;
 
-	        if (current !== null && workInProgress.stateNode != null) ; else {
+	        if (current !== null && workInProgress.stateNode != null) {
+	          //todo
+	          throw new Error('Not Implement');
+	        } else {
 	          var instance = createInstance(type); //由于是前序遍历，当workInProgress进行归阶段时，
 	          //其所有子节点都已完成了递和归阶段，也就是意味着其子树的所有dom节点已经创建
 	          //所以只需要把子树中离instance最近的dom节点追加到instance上即可
@@ -2855,6 +2952,20 @@
 	          if (finalizeInitialChildren(instance, type, newProps)) ;
 	        }
 
+	        return null;
+	      }
+
+	    case HostText:
+	      {
+	        var newText = newProps;
+
+	        if (current && workInProgress.stateNode !== null) {
+	          throw new Error('Not Implement');
+	        } else {
+	          workInProgress.stateNode = createTextInstance(newText);
+	        }
+
+	        bubbleProperties(workInProgress);
 	        return null;
 	      }
 	  }
@@ -3054,7 +3165,7 @@
 	};
 
 	var App = function App() {
-	  return /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(Wrapper, null), /*#__PURE__*/React.createElement("div", null, "sdf"));
+	  return /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(Wrapper, null), /*#__PURE__*/React.createElement("div", null, "sdf"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("div", null, "sdlf"), "sdfsd"));
 	};
 
 	createRoot(document.querySelector('#app')).render( /*#__PURE__*/React.createElement(App, null)); // ReactDom.render(<App />, document.querySelector('#app')!)

@@ -1,4 +1,7 @@
-import { finalizeInitialChildren } from '../react-dom/ReactDOMHostConfig'
+import {
+  createTextInstance,
+  finalizeInitialChildren,
+} from '../react-dom/ReactDOMHostConfig'
 import { NoFlags } from './ReactFiberFlags'
 import { appendInitialChild, createInstance } from './ReactFiberHostConfig'
 import { Fiber } from './ReactInternalTypes'
@@ -66,6 +69,7 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
     completedWork.subtreeFlags |= subtreeFlags
   } else {
     //todo
+    throw new Error('Not Implement')
   }
 
   return didBailout
@@ -99,6 +103,7 @@ export const completeWork = (
       const type = workInProgress.type
       if (current !== null && workInProgress.stateNode != null) {
         //todo
+        throw new Error('Not Implement')
       } else {
         const instance = createInstance(type, newProps)
 
@@ -114,6 +119,17 @@ export const completeWork = (
         }
       }
 
+      return null
+    }
+    case HostText: {
+      const newText = newProps
+
+      if (current && workInProgress.stateNode !== null) {
+        throw new Error('Not Implement')
+      } else {
+        workInProgress.stateNode = createTextInstance(newText)
+      }
+      bubbleProperties(workInProgress)
       return null
     }
   }

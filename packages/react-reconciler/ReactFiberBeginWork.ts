@@ -7,6 +7,7 @@ import {
   FunctionComponent,
   HostComponent,
   HostRoot,
+  HostText,
   IndeterminateComponent,
 } from './ReactWorkTags'
 
@@ -118,6 +119,8 @@ export const beginWork = (
     }
     case HostComponent:
       return updateHostComponent(current, workInProgress)
+    case HostText:
+      return null
   }
 
   throw new Error('Not Implement')

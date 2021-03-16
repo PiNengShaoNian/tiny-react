@@ -99,3 +99,9 @@ export const finalizeInitialChildren = (
   //shouldAutoFocusHostComponent
   return false
 }
+
+export const createTextInstance = (text: string): Text => {
+  const instance = document.createTextNode(text)
+
+  return instance
+}

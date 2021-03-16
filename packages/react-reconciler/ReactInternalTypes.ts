@@ -24,6 +24,10 @@ export type FiberRoot = {
 
 export type Fiber = {
   /**
+   * 该fiber节点处于同级兄弟节点的第几位
+   */
+  index: number
+  /**
    * 此次commit中需要删除的fiber节点
    */
   deletions: Fiber[] | null
