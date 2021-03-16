@@ -1,3 +1,5 @@
+import { finalizeInitialChildren } from '../react-dom/ReactDOMHostConfig'
+import { NoFlags } from './ReactFiberFlags'
 import { appendInitialChild, createInstance } from './ReactFiberHostConfig'
 import { Fiber } from './ReactInternalTypes'
 import {
@@ -44,6 +46,39 @@ const appendAllChildren = (parent: Element, workInProgress: Fiber): void => {
   }
 }
 
+const bubbleProperties = (completedWork: Fiber): boolean => {
+  const didBailout =
+    completedWork.alternate !== null &&
+    completedWork.alternate.child === completedWork.child
+  let subtreeFlags = NoFlags
+
+  if (!didBailout) {
+    let child = completedWork.child
+
+    while (child !== null) {
+      subtreeFlags |= child.subtreeFlags
+      subtreeFlags |= child.flags
+
+      child.return = completedWork
+
+      child = child.sibling
+    }
+    completedWork.subtreeFlags |= subtreeFlags
+  } else {
+    //todo
+  }
+
+  return didBailout
+}
+
+const hadNoMutationsEffects = (current: null | Fiber, completedWork: Fiber) => {
+  // const didBailout = current !== null && current.child === completedWork.child
+
+  // if (didBailout) return didBailout
+  //todo
+  return false
+}
+
 export const completeWork = (
   current: Fiber | null,
   workInProgress: Fiber
@@ -57,6 +92,7 @@ export const completeWork = (
     case HostRoot: {
       //todo
       //   const fiberRoot = workInProgress.stateNode
+      bubbleProperties(workInProgress)
       return null
     }
     case HostComponent: {
@@ -71,6 +107,11 @@ export const completeWork = (
         //所以只需要把子树中离instance最近的dom节点追加到instance上即可
         appendAllChildren(instance, workInProgress)
         workInProgress.stateNode = instance
+
+        bubbleProperties(workInProgress)
+
+        if (finalizeInitialChildren(instance, type, newProps)) {
+        }
       }
 
       return null

@@ -1,14 +1,14 @@
 import React from '../packages/react'
 import { createRoot } from '../packages/react-dom'
 
+const Wrapper = () => <div>wrapper</div>
+
 const App = () => {
   return (
-    <div onClick={() => {}}>
-      <span></span>
-      {/* <span></span>
-      <span></span>
-      <span key="3">lsf</span> */}
-    </div>
+    <span>
+      <Wrapper />
+      <div>sdf</div>
+    </span>
   )
 }
 

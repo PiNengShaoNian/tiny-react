@@ -1,6 +1,12 @@
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
+import {
+  commitBeforeMutationEffects,
+  commitLayoutEffects,
+  commitMutationEffects,
+} from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
+import { MutationMask, NoFlags } from './ReactFiberFlags'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { HostRoot } from './ReactWorkTags'
 
@@ -80,13 +86,52 @@ const renderRootSync = (root: FiberRoot) => {
   }
 
   while (workInProgress !== null) {
-    debugger
     performUnitOfWork(workInProgress)
   }
 }
 
+const commitRootImpl = (root: FiberRoot): null => {
+  const finishedWork = root.finishedWork
+
+  if (finishedWork === null) return null
+
+  root.finishedWork = null
+
+  workInProgressRoot = null
+  workInProgress = null
+
+  const subtreeHasEffects =
+    (finishedWork.subtreeFlags & MutationMask) !== NoFlags
+  const rootHasEffect = (finishedWork.flags & MutationMask) !== NoFlags
+
+  if (rootHasEffect || subtreeHasEffects) {
+    commitBeforeMutationEffects(root, finishedWork)
+
+    commitMutationEffects(root, finishedWork)
+
+    root.current = finishedWork
+
+    commitLayoutEffects(finishedWork, root)
+  } else {
+    root.current = finishedWork
+  }
+
+  return null
+}
+
+const commitRoot = (root: FiberRoot): null => {
+  commitRootImpl(root)
+  return null
+}
+
 export const performSyncWorkOnRoot = (root: FiberRoot) => {
   const exitStatus = renderRootSync(root)
+
+  const finishedWork: Fiber | null = root.current.alternate
+
+  root.finishedWork = finishedWork
+
+  commitRoot(root)
 }
 
 /**

@@ -1,11 +1,15 @@
 import { REACT_ELEMENT_TYPE } from '../shared/ReactSymbols'
 import { ReactElement } from '../shared/ReactTypes'
 import { createFiberFromElement } from './ReactFiber'
+import { Placement } from './ReactFiberFlags'
 import { Fiber } from './ReactInternalTypes'
+
+const isArray = Array.isArray
 
 const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   const placeSingleChild = (newFiber: Fiber): Fiber => {
     if (shouldTrackSideEffects && newFiber.alternate === null) {
+      newFiber.flags |= Placement
     }
 
     return newFiber
@@ -40,6 +44,17 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     return null
   }
 
+  const reconcileChildrenArray = (
+    returnFiber: Fiber,
+    currentFirstChild: Fiber | null,
+    newChildren: any[]
+  ): Fiber | null => {
+    let resultingFirstChild: Fiber | null = null
+    let previousNewFiber: Fiber | null = null
+
+    return null
+  }
+
   const reconcileChildFibers = (
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -47,6 +62,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   ): Fiber | null => {
     const isObject = typeof newChild === 'object' && newChild !== null
 
+    debugger
     if (isObject) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE: {
@@ -57,15 +73,19 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       }
     }
 
-    //当一个returnFiber节点的children为空，则删除returnFiber的所有子节点
-    if (typeof newChild === 'undefined') {
-      return deleteRemainingChildren(returnFiber, currentFirstChild)
+    if (typeof newChild === 'string') {
     }
 
-    throw new Error('Not Implment')
+    if (isArray(newChild)) {
+      return reconcileChildrenArray(returnFiber, currentFirstChild, newChildren)
+    }
+
+    //newChild为空删除现有fiber节点
+    return deleteRemainingChildren(returnFiber, currentFirstChild)
   }
 
   return reconcileChildFibers
 }
 
 export const mountChildFibers = ChildReconciler(false)
+export const reconcileChildFibers = ChildReconciler(true)

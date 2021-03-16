@@ -13,6 +13,7 @@ import {
   NoMode,
   TypeOfMode,
 } from './ReactTypeOfMode'
+import { Flags } from './ReactFiberFlags'
 
 class FiberNode {
   stateNode: any = null
@@ -24,6 +25,9 @@ class FiberNode {
   sibling: Fiber | null = null
   type: any = null
   memoizedProps: any = null
+  flags: Flags = 0
+  subtreeFlags: Flags = 0
+  deletions: Fiber[] | null = null
 
   constructor(
     public tag: WorkTag,

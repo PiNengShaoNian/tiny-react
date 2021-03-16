@@ -1,3 +1,4 @@
+import { Flags } from './ReactFiberFlags'
 import { TypeOfMode } from './ReactTypeOfMode'
 import { WorkTag } from './ReactWorkTags'
 
@@ -5,6 +6,10 @@ import { WorkTag } from './ReactWorkTags'
  * 应用根节点
  */
 export type FiberRoot = {
+  /**
+   * 当前完成render阶段构建完成的workInProgress树根节点
+   */
+  finishedWork: Fiber | null
   /**
    * 当前页面所对应的fiber树，其alternate属性指向workInProgress fiber树
    */
@@ -18,7 +23,25 @@ export type FiberRoot = {
 }
 
 export type Fiber = {
+  /**
+   * 此次commit中需要删除的fiber节点
+   */
+  deletions: Fiber[] | null
+  /**
+   * 子树带有的更新操作，用于减少查找fiber树上更新的时间复杂度
+   */
+  subtreeFlags: Flags
+  /**
+   *一个Bitset代表该fiber节点上带有的更新操作,比如第二位为1就代表该节点需要插入
+   */
+  flags: Flags
+  /**
+   * 新创建jsx对象的第二个参数,像HostRoot这种内部自己创建的Fiber节点为null
+   */
   pendingProps: any
+  /**
+   * 上一轮更新完成后的props
+   */
   memoizedProps: any
   /**
    *其子节点为单链表结构child指向了他的第一个子节点后续子节点可通过child.sibling获得

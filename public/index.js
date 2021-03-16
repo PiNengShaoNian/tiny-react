@@ -1377,6 +1377,12 @@
 	  _defineProperty(this, "type", null);
 
 	  _defineProperty(this, "memoizedProps", null);
+
+	  _defineProperty(this, "flags", 0);
+
+	  _defineProperty(this, "subtreeFlags", 0);
+
+	  _defineProperty(this, "deletions", null);
 	};
 	/**
 	 *
@@ -1699,6 +1705,34 @@
 	  initializeUpdateQueue(uninitializedFiber);
 	  return root;
 	};
+
+	// `RegExp.prototype.flags` getter implementation
+	// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
+	var regexpFlags = function () {
+	  var that = anObject(this);
+	  var result = '';
+	  if (that.global) result += 'g';
+	  if (that.ignoreCase) result += 'i';
+	  if (that.multiline) result += 'm';
+	  if (that.dotAll) result += 's';
+	  if (that.unicode) result += 'u';
+	  if (that.sticky) result += 'y';
+	  return result;
+	};
+
+	var flags_1 = function (it) {
+	  return regexpFlags.call(it);
+	};
+
+	var RegExpPrototype = RegExp.prototype;
+
+	var flags_1$1 = function (it) {
+	  return (it === RegExpPrototype || it instanceof RegExp) && !('flags' in it) ? flags_1(it) : it.flags;
+	};
+
+	var flags = flags_1$1;
+
+	var flags$1 = flags;
 
 	var createProperty = function (object, key, value) {
 	  var propertyKey = toPrimitive(key);
@@ -2190,6 +2224,57 @@
 
 	var _typeof = unwrapExports(_typeof_1);
 
+	/**
+	 * HTML nodeType values that represent the type of the node
+	 */
+	var TEXT_NODE = 3;
+
+	var setTextContent = function setTextContent(node, text) {
+	  if (text) {
+	    var firstChild = node.firstChild;
+
+	    if (firstChild && firstChild === node.lastChild && firstChild.nodeType === TEXT_NODE) {
+	      firstChild.nodeValue = text;
+	      return;
+	    }
+
+	    node.textContent = text;
+	  }
+	};
+
+	var STYLE = 'style';
+	var CHILDREN = 'children';
+
+	var setInitialDOMProperties = function setInitialDOMProperties(tag, domElement, nextProps) {
+	  for (var propKey in nextProps) {
+	    if (!nextProps.hasOwnProperty(propKey)) continue;
+	    var nextProp = nextProps[propKey];
+
+	    if (propKey === STYLE) ; else if (propKey === CHILDREN) {
+	      if (typeof nextProp === 'string') {
+	        var canSetTextContent = tag !== 'textarea' || nextProp !== '';
+
+	        if (canSetTextContent) {
+	          setTextContent(domElement, nextProp);
+	        }
+	      } else if (typeof nextProp === 'number') {
+	        setTextContent(domElement, nextProp + '');
+	      }
+	    }
+	  }
+	};
+	/**
+	 * 初始化dom属性
+	 * @param domElement dom元素
+	 * @param tag dom的tag对应React.createElement的第一个参数
+	 * @param rawProps 对应了React.createElement的第二个参数（包含children）
+	 */
+
+
+	var setInitialProperties = function setInitialProperties(domElement, tag, rawProps) {
+	  setInitialDOMProperties(tag, domElement, rawProps);
+	};
+
 	var shouldSetTextContent = function shouldSetTextContent(type, props) {
 	  return type === 'textarea' || type === 'option' || type === 'noscript' || typeof props.children === 'string' || typeof props.children === 'number' || _typeof(props.dangerouslySetInnerHTML) === 'object' && props.dangerouslySetInnerHTML !== null && props.dangerouslySetInnerHTML.__html !== null;
 	};
@@ -2202,10 +2287,85 @@
 	var appendInitialChild = function appendInitialChild(parentInstance, child) {
 	  parentInstance.appendChild(child);
 	};
+	var insertBefore = function insertBefore(parentInstance, child, beforeChild) {
+	  parentInstance.insertBefore(child, beforeChild);
+	};
+	var appendChild = function appendChild(parentInstance, child) {
+	  parentInstance.appendChild(child);
+	};
+	var COMMENT_NODE = 8;
+	/**
+	 * 和appendChild一样，只是多了个判断是否是注释节点
+	 * @param container React.render第二个参数
+	 * @param child 要添加的dom
+	 * @param beforeChild
+	 */
+
+	var insertInContainerBefore = function insertInContainerBefore(container, child, beforeChild) {
+	  if (container.nodeType === COMMENT_NODE) {
+	    var _container$parentNode;
+
+	    (_container$parentNode = container.parentNode) === null || _container$parentNode === void 0 ? void 0 : _container$parentNode.insertBefore(child, beforeChild);
+	  } else {
+	    container.insertBefore(child, beforeChild);
+	  }
+	};
+	var appendChildToContainer = function appendChildToContainer(container, child) {
+	  var parentNode;
+
+	  if (container.nodeType === COMMENT_NODE) {
+	    var _parentNode;
+
+	    parentNode = container.parentNode;
+	    (_parentNode = parentNode) === null || _parentNode === void 0 ? void 0 : _parentNode.insertBefore(child, container);
+	  } else {
+	    parentNode = container;
+	    parentNode.appendChild(child);
+	  }
+	};
+	var finalizeInitialChildren = function finalizeInitialChildren(domElement, type, props) {
+	  setInitialProperties(domElement, type, props); //shouldAutoFocusHostComponent
+
+	  return false;
+	};
+
+	// `Array.isArray` method
+	// https://tc39.es/ecma262/#sec-array.isarray
+	_export({ target: 'Array', stat: true }, {
+	  isArray: isArray
+	});
+
+	var isArray$1 = path.Array.isArray;
+
+	var isArray$2 = isArray$1;
+
+	var isArray$3 = isArray$2;
+
+	var NoFlags =
+	/*                      */
+	0;
+	var Placement =
+	/*                    */
+	2;
+	var Update =
+	/*                       */
+	4;
+	var ChildDeletion =
+	/*                */
+	16;
+	var ContentReset =
+	/*                 */
+	32;
+	var MutationMask = Placement | Update | ChildDeletion | ContentReset;
+	var BeforeMutationMask = Update;
+
+	var isArray$4 = isArray$3;
 
 	var ChildReconciler = function ChildReconciler(shouldTrackSideEffects) {
 	  var placeSingleChild = function placeSingleChild(newFiber) {
-	    if (shouldTrackSideEffects && newFiber.alternate === null) ;
+	    if (shouldTrackSideEffects && newFiber.alternate === null) {
+	      newFiber.flags |= Placement;
+	    }
 
 	    return newFiber;
 	  };
@@ -2227,8 +2387,13 @@
 	    return null;
 	  };
 
+	  var reconcileChildrenArray = function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
+	    return null;
+	  };
+
 	  var reconcileChildFibers = function reconcileChildFibers(returnFiber, currentFirstChild, newChild) {
 	    var isObject = _typeof(newChild) === 'object' && newChild !== null;
+	    debugger;
 
 	    if (isObject) {
 	      switch (newChild.$$typeof) {
@@ -2237,20 +2402,21 @@
 	            return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstChild, newChild));
 	          }
 	      }
-	    } //当一个returnFiber节点的children为空，则删除returnFiber的所有子节点
-
-
-	    if (typeof newChild === 'undefined') {
-	      return deleteRemainingChildren();
 	    }
 
-	    throw new Error('Not Implment');
+	    if (isArray$4(newChild)) {
+	      return reconcileChildrenArray(returnFiber, currentFirstChild, newChildren);
+	    } //newChild为空删除现有fiber节点
+
+
+	    return deleteRemainingChildren();
 	  };
 
 	  return reconcileChildFibers;
 	};
 
 	var mountChildFibers = ChildReconciler(false);
+	var reconcileChildFibers = ChildReconciler(true);
 
 	var renderWithHooks = function renderWithHooks(current, workInProgress, Component, props, secondArg) {
 	  //调用函数组件，获取JSX对象
@@ -2281,14 +2447,16 @@
 	    return null;
 	  }
 
-	  var child = mountChildFibers(workInProgress, null, nextChildren);
-	  workInProgress.child = child;
+	  reconcileChildren(current, workInProgress, nextChildren);
 	  return workInProgress.child;
 	};
 
 	var reconcileChildren = function reconcileChildren(current, workInProgress, nextChildren) {
 	  if (current === null) {
 	    workInProgress.child = mountChildFibers(workInProgress, null, nextChildren);
+	  } else {
+	    //todo update
+	    workInProgress.child = reconcileChildFibers(workInProgress, current.child, nextChildren);
 	  }
 	};
 
@@ -2345,6 +2513,257 @@
 	  throw new Error('Not Implement');
 	};
 
+	var nextEffect = null;
+
+	var ensureCorrectReturnPointer = function ensureCorrectReturnPointer(fiber, expectedReturnFiber) {
+	  fiber["return"] = expectedReturnFiber;
+	};
+
+	var commitBeforeMutationEffects_begin = function commitBeforeMutationEffects_begin() {
+	  while (nextEffect !== null) {
+	    var fiber = nextEffect;
+	    var child = fiber.child; //如果子树由beforeMutation标记
+
+	    if ((fiber.subtreeFlags & BeforeMutationMask) !== NoFlags && child !== null) {
+	      ensureCorrectReturnPointer(child, fiber);
+	      nextEffect = child;
+	    } else {
+	      commitBeforeMutationEffects_complete();
+	    }
+	  }
+	};
+
+	var commitBeforeMutationEffects_complete = function commitBeforeMutationEffects_complete() {
+	  while (nextEffect !== null) {
+	    var fiber = nextEffect;
+	    commitBeforeMutationEffectsOnFiber(fiber);
+	    var sibling = fiber.sibling;
+
+	    if (sibling !== null) {
+	      nextEffect = sibling;
+	      return;
+	    }
+
+	    nextEffect = fiber["return"];
+	  }
+	};
+
+	var commitBeforeMutationEffectsOnFiber = function commitBeforeMutationEffectsOnFiber(finishedWork) {
+	  var current = finishedWork.alternate;
+
+	  var flags = flags$1(finishedWork); //todo Snapshot
+
+	};
+
+	var commitBeforeMutationEffects = function commitBeforeMutationEffects(root, firstChild) {
+	  nextEffect = firstChild;
+	  commitBeforeMutationEffects_begin();
+	};
+	var commitMutationEffects = function commitMutationEffects(root, firstChild) {
+	  nextEffect = firstChild;
+	  commitMutationEffects_begin();
+	};
+
+	var isHostParent = function isHostParent(fiber) {
+	  return fiber.tag === HostComponent || fiber.tag === HostRoot;
+	};
+
+	var getHostParentFiber = function getHostParentFiber(fiber) {
+	  var parent = fiber["return"];
+
+	  while (parent !== null) {
+	    if (isHostParent(parent)) {
+	      return parent;
+	    }
+
+	    parent = parent["return"];
+	  }
+
+	  throw new Error('Expected to find a host parent');
+	};
+	/**
+	 * 找到一个fiber节点右边首个不需要插入的dom节点
+	 * @param fiber 从该节点开始往右边找
+	 * @returns 找到的dom节点
+	 */
+
+
+	var getHostSibling = function getHostSibling(fiber) {
+	  var node = fiber;
+
+	  siblings: while (true) {
+	    while (node.sibling === null) {
+	      if (node["return"] === null || isHostParent(node["return"])) return null;
+	      node = node["return"];
+	    }
+
+	    node.sibling["return"] = node["return"];
+	    node = node.sibling;
+
+	    while (node.tag !== HostComponent) {
+	      if (flags$1(node) & Placement) {
+	        continue siblings;
+	      }
+
+	      if (node.child === null) {
+	        continue siblings;
+	      } else {
+	        node.child["return"] = node;
+	        node = node.child;
+	      }
+	    }
+
+	    if (!(flags$1(node) & Placement)) {
+	      return node.stateNode;
+	    }
+	  }
+	};
+
+	var insertOrAppendPlacementNode = function insertOrAppendPlacementNode(node, before, parent) {
+	  var tag = node.tag;
+	  var isHost = tag === HostComponent || tag === HostText;
+
+	  if (isHost) {
+	    var stateNode = isHost ? node.stateNode : node.stateNode.instance;
+
+	    if (before) {
+	      insertBefore(parent, stateNode, before);
+	    } else {
+	      appendChild(parent, stateNode);
+	    }
+	  } else {
+	    var child = node.child;
+
+	    if (child !== null) {
+	      insertOrAppendPlacementNode(child, before, parent);
+	      var sibling = child.sibling;
+
+	      while (sibling !== null) {
+	        insertOrAppendPlacementNode(sibling, before, parent);
+	        sibling = sibling.sibling;
+	      }
+	    }
+	  }
+	};
+
+	var insertOrAppendPlacementNodeIntoContainer = function insertOrAppendPlacementNodeIntoContainer(node, before, parent) {
+	  var tag = node.tag;
+	  var isHost = tag === HostComponent || tag === HostText;
+
+	  if (isHost) {
+	    var stateNode = node.stateNode;
+
+	    if (before) {
+	      insertInContainerBefore(parent, stateNode, before);
+	    } else {
+	      appendChildToContainer(parent, stateNode);
+	    }
+	  } else {
+	    var child = node.child;
+
+	    if (child !== null) {
+	      insertOrAppendPlacementNodeIntoContainer(child, before, parent);
+	      var sibling = child.sibling;
+
+	      while (sibling !== null) {
+	        insertOrAppendPlacementNodeIntoContainer(sibling, before, parent);
+	        sibling = sibling.sibling;
+	      }
+	    }
+	  }
+	};
+
+	var commitPlacement = function commitPlacement(finishedWork) {
+	  var parentFiber = getHostParentFiber(finishedWork);
+	  var parent;
+	  var isContainer;
+	  var parentStateNode = parentFiber.stateNode;
+
+	  switch (parentFiber.tag) {
+	    case HostComponent:
+	      parent = parentStateNode;
+	      isContainer = false;
+	      break;
+
+	    case HostRoot:
+	      parent = parentStateNode.containerInfo;
+	      isContainer = true;
+	      break;
+
+	    default:
+	      {
+	        throw new Error('Invalid host parent fiber');
+	      }
+	  }
+
+	  if (flags$1(parentFiber) & ContentReset) ;
+
+	  var before = getHostSibling(finishedWork);
+
+	  if (isContainer) {
+	    insertOrAppendPlacementNodeIntoContainer(finishedWork, before, parent);
+	  } else {
+	    insertOrAppendPlacementNode(finishedWork, before, parent);
+	  }
+	};
+
+	var commitLayoutEffects = function commitLayoutEffects(finishedWork, root) {
+	  nextEffect = finishedWork; //todo
+	  //   commitLayoutEffects_begin(finishedWork, root)
+	};
+
+	var commitMutationEffectsOnFiber = function commitMutationEffectsOnFiber(finishedWork, root) {
+	  var flags = flags$1(finishedWork);
+
+	  var primaryFlags = flags & (Placement | Update);
+
+	  switch (primaryFlags) {
+	    case Placement:
+	      {
+	        commitPlacement(finishedWork);
+	        finishedWork.flags &= ~Placement;
+	      }
+	  }
+	};
+
+	var commitMutationEffects_complete = function commitMutationEffects_complete(root) {
+	  while (nextEffect !== null) {
+	    var fiber = nextEffect;
+	    commitMutationEffectsOnFiber(fiber);
+	    var sibling = fiber.sibling;
+
+	    if (sibling !== null) {
+	      ensureCorrectReturnPointer(sibling, fiber["return"]);
+	      nextEffect = sibling;
+	      return;
+	    }
+
+	    nextEffect = fiber["return"];
+	  }
+	};
+
+	var commitMutationEffects_begin = function commitMutationEffects_begin(root) {
+	  while (nextEffect !== null) {
+	    var fiber = nextEffect; //todo 删除fiber节点
+	    // const deletions = fiber.deletions
+	    // if (deletions !== null) {
+	    //   for (let i = 0; i < deletions.length; ++i) {
+	    //     const childToDelete = deletions[i]
+	    //     commitDeletion(root, childToDelete, fiber)
+	    //   }
+	    // }
+
+	    var child = fiber.child;
+
+	    if ((fiber.subtreeFlags & MutationMask) !== NoFlags && child !== null) {
+	      ensureCorrectReturnPointer(child, fiber);
+	      nextEffect = child;
+	    } else {
+	      commitMutationEffects_complete();
+	    }
+	  }
+	};
+
 	var appendAllChildren = function appendAllChildren(parent, workInProgress) {
 	  var node = workInProgress.child;
 
@@ -2384,6 +2803,26 @@
 	  }
 	};
 
+	var bubbleProperties = function bubbleProperties(completedWork) {
+	  var didBailout = completedWork.alternate !== null && completedWork.alternate.child === completedWork.child;
+	  var subtreeFlags = NoFlags;
+
+	  if (!didBailout) {
+	    var child = completedWork.child;
+
+	    while (child !== null) {
+	      subtreeFlags |= child.subtreeFlags;
+	      subtreeFlags |= flags$1(child);
+	      child["return"] = completedWork;
+	      child = child.sibling;
+	    }
+
+	    completedWork.subtreeFlags |= subtreeFlags;
+	  }
+
+	  return didBailout;
+	};
+
 	var completeWork = function completeWork(current, workInProgress) {
 	  var newProps = workInProgress.pendingProps;
 
@@ -2396,6 +2835,7 @@
 	      {
 	        //todo
 	        //   const fiberRoot = workInProgress.stateNode
+	        bubbleProperties(workInProgress);
 	        return null;
 	      }
 
@@ -2410,6 +2850,9 @@
 
 	          appendAllChildren(instance, workInProgress);
 	          workInProgress.stateNode = instance;
+	          bubbleProperties(workInProgress);
+
+	          if (finalizeInitialChildren(instance, type, newProps)) ;
 	        }
 
 	        return null;
@@ -2488,13 +2931,41 @@
 	  }
 
 	  while (workInProgress !== null) {
-	    debugger;
 	    performUnitOfWork(workInProgress);
 	  }
 	};
 
+	var commitRootImpl = function commitRootImpl(root) {
+	  var finishedWork = root.finishedWork;
+	  if (finishedWork === null) return null;
+	  root.finishedWork = null;
+	  workInProgressRoot = null;
+	  workInProgress = null;
+	  var subtreeHasEffects = (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
+	  var rootHasEffect = (flags$1(finishedWork) & MutationMask) !== NoFlags;
+
+	  if (rootHasEffect || subtreeHasEffects) {
+	    commitBeforeMutationEffects(root, finishedWork);
+	    commitMutationEffects(root, finishedWork);
+	    root.current = finishedWork;
+	    commitLayoutEffects(finishedWork);
+	  } else {
+	    root.current = finishedWork;
+	  }
+
+	  return null;
+	};
+
+	var commitRoot = function commitRoot(root) {
+	  commitRootImpl(root);
+	  return null;
+	};
+
 	var performSyncWorkOnRoot = function performSyncWorkOnRoot(root) {
 	  var exitStatus = renderRootSync(root);
+	  var finishedWork = root.current.alternate;
+	  root.finishedWork = finishedWork;
+	  commitRoot(root);
 	};
 	/**
 	 * 调度fiber节点上的更新
@@ -2578,10 +3049,12 @@
 	  return new ReactDomRoot(container);
 	};
 
+	var Wrapper = function Wrapper() {
+	  return /*#__PURE__*/React.createElement("div", null, "wrapper");
+	};
+
 	var App = function App() {
-	  return /*#__PURE__*/React.createElement("div", {
-	    onClick: function onClick() {}
-	  }, /*#__PURE__*/React.createElement("span", null));
+	  return /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(Wrapper, null), /*#__PURE__*/React.createElement("div", null, "sdf"));
 	};
 
 	createRoot(document.querySelector('#app')).render( /*#__PURE__*/React.createElement(App, null)); // ReactDom.render(<App />, document.querySelector('#app')!)

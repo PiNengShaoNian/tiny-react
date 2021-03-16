@@ -1,5 +1,5 @@
 import { shouldSetTextContent } from './ReactFiberHostConfig'
-import { mountChildFibers } from './ReactChildFiber'
+import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber'
 import { renderWithHooks } from './ReactFiberHooks'
 import { Fiber } from './ReactInternalTypes'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
@@ -33,9 +33,7 @@ const updateHostRoot = (current: Fiber, workInProgress: Fiber) => {
     return null
   }
 
-  const child = mountChildFibers(workInProgress, null, nextChildren)
-
-  workInProgress.child = child
+  reconcileChildren(current, workInProgress, nextChildren)
 
   return workInProgress.child
 }
@@ -49,6 +47,11 @@ const reconcileChildren = (
     workInProgress.child = mountChildFibers(workInProgress, null, nextChildren)
   } else {
     //todo update
+    workInProgress.child = reconcileChildFibers(
+      workInProgress,
+      current.child,
+      nextChildren
+    )
   }
 }
 
