@@ -160,3 +160,17 @@ export const scheduleUpdateOnFiber = (fiber: Fiber): FiberRoot | null => {
 
   return root
 }
+
+export const discreteUpdates = <A, B, C, D, R>(
+  fn: (a: A, b: B, c: C, d: D) => R,
+  a: A,
+  b: B,
+  c: C,
+  d: D
+): R => {
+  return fn(a, b, c, d)
+}
+
+export const batchedEventUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
+  return fn(a)
+}

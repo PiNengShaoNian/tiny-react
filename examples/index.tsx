@@ -1,20 +1,35 @@
 import React from '../packages/react'
 import { createRoot } from '../packages/react-dom'
 
-const Wrapper = () => <div>wrapper</div>
+const Wrapper: React.FC<{
+  onClick: () => void
+  onClickCapture: () => void
+}> = ({ onClick, onClickCapture }) => (
+  <div onClickCapture={onClickCapture} onClick={onClick}>
+    wrapper
+  </div>
+)
 
 const App = () => {
   return (
-    <span>
-      <Wrapper />
-      <div>sdf</div>
-      <div>
-        <a>sldfj</a>
-        <a>sldfj</a>
-        <a>sldfj</a>
-        <div>sdlf</div>
-        sdfsd
-      </div>
+    <span
+      // onClick={() => {
+      //   console.log('span bubble')
+      // }}
+      onClickCapture={() => {
+        debugger
+        console.log('span capture')
+      }}
+    >
+      sdfsad
+      {/* <Wrapper
+        onClick={() => {
+          console.log('wrapper bubble')
+        }}
+        onClickCapture={() => {
+          console.log('wrapper capture')
+        }}
+      /> */}
     </span>
   )
 }

@@ -1,11 +1,10 @@
-export { createRoot } from './ReactDomRoot'
+import { setBatchingImplementation } from './events/ReactDOMUpdateBatching'
+import { createRoot } from './ReactDomRoot'
+import {
+  discreteUpdates,
+  batchedEventUpdates,
+} from '../react-reconciler/ReactFiberReconciler'
 
-export default {
-  render(element: any, container: Element) {
-    console.log({
-      element,
-      container,
-    })
-    console.log('Noop')
-  },
-}
+setBatchingImplementation(discreteUpdates, batchedEventUpdates)
+
+export { createRoot }

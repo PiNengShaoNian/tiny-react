@@ -5,6 +5,7 @@ import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { RootTag } from './ReactRootTags'
 import { createUpdate, enqueueUpdate } from './ReactUpdateQueue'
+import { discreteUpdates, batchedEventUpdates } from './ReactFiberWorkLoop'
 
 /**
  *
@@ -37,3 +38,5 @@ export const updateContainer = (
 
   scheduleUpdateOnFiber(current)
 }
+
+export { discreteUpdates, batchedEventUpdates }

@@ -1,3 +1,8 @@
+import { Fiber } from '../react-reconciler/ReactInternalTypes'
+import {
+  precacheFiberNode,
+  updateFiberProps,
+} from './events/ReactDOMComponentTree'
 import { setInitialProperties } from './ReactDOMComponent'
 import { Container } from './ReactDomRoot'
 
@@ -28,11 +33,18 @@ export const shouldSetTextContent = (type: string, props: Props): boolean => {
   )
 }
 
-export const createInstance = (type: string, props: Props) => {
+export const createInstance = (
+  type: string,
+  props: Props,
+  internalInstanceHandle: Fiber
+) => {
   const domElement: Element = document.createElement(type)
   //todo
   //updateFiberProps(domElement, props)
 
+  precacheFiberNode(internalInstanceHandle, domElement)
+  updateFiberProps(domElement, props)
+  
   return domElement
 }
 

@@ -105,7 +105,7 @@ export const completeWork = (
         //todo
         throw new Error('Not Implement')
       } else {
-        const instance = createInstance(type, newProps)
+        const instance = createInstance(type, newProps, workInProgress)
 
         //由于是前序遍历，当workInProgress进行归阶段时，
         //其所有子节点都已完成了递和归阶段，也就是意味着其子树的所有dom节点已经创建

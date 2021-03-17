@@ -1285,6 +1285,23 @@
 	  createElement: createElement
 	};
 
+	var discreteUpdatesImpl = function discreteUpdatesImpl(fn, a, b, c, d) {
+	  return fn(a, b, c, d);
+	};
+
+	var batchedEventUpdatesImpl = function batchedEventUpdatesImpl() {};
+
+	var discreteUpdates = function discreteUpdates(fn, a, b, c, d) {
+	  return discreteUpdatesImpl(fn, a, b, c, d);
+	};
+	var batchedEventUpdates = function batchedEventUpdates(fn, a, b) {
+	  return batchedEventUpdatesImpl(fn, a);
+	};
+	var setBatchingImplementation = function setBatchingImplementation(_discreteUpdatesImpl, _batchedEventUpdates) {
+	  discreteUpdatesImpl = _discreteUpdatesImpl;
+	  batchedEventUpdatesImpl = _batchedEventUpdates;
+	};
+
 	var createClass = createCommonjsModule(function (module) {
 	function _defineProperties(target, props) {
 	  for (var i = 0; i < props.length; i++) {
@@ -1985,12 +2002,21 @@
 	  BUGGY_SAFARI_ITERATORS: BUGGY_SAFARI_ITERATORS
 	};
 
+	var iterators = {};
+
 	var IteratorPrototype$1 = iteratorsCore.IteratorPrototype;
+
+
+
+
+
+	var returnThis$1 = function () { return this; };
 
 	var createIteratorConstructor = function (IteratorConstructor, NAME, next) {
 	  var TO_STRING_TAG = NAME + ' Iterator';
 	  IteratorConstructor.prototype = objectCreate(IteratorPrototype$1, { next: createPropertyDescriptor(1, next) });
 	  setToStringTag(IteratorConstructor, TO_STRING_TAG, false, true);
+	  iterators[TO_STRING_TAG] = returnThis$1;
 	  return IteratorConstructor;
 	};
 
@@ -2032,6 +2058,8 @@
 	var VALUES = 'values';
 	var ENTRIES = 'entries';
 
+	var returnThis$2 = function () { return this; };
+
 	var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAULT, IS_SET, FORCED) {
 	  createIteratorConstructor(IteratorConstructor, NAME, next);
 
@@ -2061,6 +2089,7 @@
 	    if (IteratorPrototype$2 !== Object.prototype && CurrentIteratorPrototype.next) {
 	      // Set @@toStringTag to native iterators
 	      setToStringTag(CurrentIteratorPrototype, TO_STRING_TAG, true, true);
+	      iterators[TO_STRING_TAG] = returnThis$2;
 	    }
 	  }
 
@@ -2074,6 +2103,7 @@
 	  if (( FORCED) && IterablePrototype[ITERATOR$1] !== defaultIterator) {
 	    createNonEnumerableProperty(IterablePrototype, ITERATOR$1, defaultIterator);
 	  }
+	  iterators[NAME] = defaultIterator;
 
 	  // export additional methods
 	  if (DEFAULT) {
@@ -2158,6 +2188,11 @@
 	  return { value: [index, target[index]], done: false };
 	}, 'values');
 
+	// argumentsList[@@iterator] is %ArrayProto_values%
+	// https://tc39.es/ecma262/#sec-createunmappedargumentsobject
+	// https://tc39.es/ecma262/#sec-createmappedargumentsobject
+	iterators.Arguments = iterators.Array;
+
 	// iterable DOM collections
 	// flag - `iterable` interface - 'entries', 'keys', 'values', 'forEach' methods
 	var domIterables = {
@@ -2202,6 +2237,7 @@
 	  if (CollectionPrototype && classof(CollectionPrototype) !== TO_STRING_TAG$3) {
 	    createNonEnumerableProperty(CollectionPrototype, TO_STRING_TAG$3, COLLECTION_NAME);
 	  }
+	  iterators[COLLECTION_NAME] = iterators.Array;
 	}
 
 	var iterator = wellKnownSymbolWrapped.f('iterator');
@@ -2237,10 +2273,85 @@
 
 	var _typeof = unwrapExports(_typeof_1);
 
+	var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('slice');
+
+	var SPECIES$2 = wellKnownSymbol('species');
+	var nativeSlice = [].slice;
+	var max$1 = Math.max;
+
+	// `Array.prototype.slice` method
+	// https://tc39.es/ecma262/#sec-array.prototype.slice
+	// fallback for not array-like ES3 strings and DOM objects
+	_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
+	  slice: function slice(start, end) {
+	    var O = toIndexedObject(this);
+	    var length = toLength(O.length);
+	    var k = toAbsoluteIndex(start, length);
+	    var fin = toAbsoluteIndex(end === undefined ? length : end, length);
+	    // inline `ArraySpeciesCreate` for usage native `Array#slice` where it's possible
+	    var Constructor, result, n;
+	    if (isArray(O)) {
+	      Constructor = O.constructor;
+	      // cross-realm fallback
+	      if (typeof Constructor == 'function' && (Constructor === Array || isArray(Constructor.prototype))) {
+	        Constructor = undefined;
+	      } else if (isObject(Constructor)) {
+	        Constructor = Constructor[SPECIES$2];
+	        if (Constructor === null) Constructor = undefined;
+	      }
+	      if (Constructor === Array || Constructor === undefined) {
+	        return nativeSlice.call(O, k, fin);
+	      }
+	    }
+	    result = new (Constructor === undefined ? Array : Constructor)(max$1(fin - k, 0));
+	    for (n = 0; k < fin; k++, n++) if (k in O) createProperty(result, n, O[k]);
+	    result.length = n;
+	    return result;
+	  }
+	});
+
+	var entryVirtual = function (CONSTRUCTOR) {
+	  return path[CONSTRUCTOR + 'Prototype'];
+	};
+
+	var slice = entryVirtual('Array').slice;
+
+	var ArrayPrototype = Array.prototype;
+
+	var slice_1 = function (it) {
+	  var own = it.slice;
+	  return it === ArrayPrototype || (it instanceof Array && own === ArrayPrototype.slice) ? slice : own;
+	};
+
+	var slice$1 = slice_1;
+
+	var slice$2 = slice$1;
+
+	var _context;
+
+	var randomKey = slice$2(_context = Math.random().toString(36)).call(_context, 2);
+
+	var internalPropsKey = '__reactProps$' + randomKey;
+	var internalInstanceKey = '__reactFiber$' + randomKey;
+	var getFiberCurrentPropsFromNode = function getFiberCurrentPropsFromNode(node) {
+	  return node[internalPropsKey];
+	};
+	var getClosestInstanceFromNode = function getClosestInstanceFromNode(targetNode) {
+	  var targetInst = targetNode[internalInstanceKey];
+	  return targetInst !== null && targetInst !== void 0 ? targetInst : null;
+	};
+	var precacheFiberNode = function precacheFiberNode(hostInst, node) {
+	  node[internalInstanceKey] = hostInst;
+	};
+	var updateFiberProps = function updateFiberProps(node, props) {
+	  node[internalPropsKey] = props;
+	};
+
 	/**
 	 * HTML nodeType values that represent the type of the node
 	 */
 	var TEXT_NODE = 3;
+	var COMMENT_NODE = 8;
 
 	var setTextContent = function setTextContent(node, text) {
 	  if (text) {
@@ -2291,10 +2402,12 @@
 	var shouldSetTextContent = function shouldSetTextContent(type, props) {
 	  return type === 'textarea' || type === 'option' || type === 'noscript' || typeof props.children === 'string' || typeof props.children === 'number' || _typeof(props.dangerouslySetInnerHTML) === 'object' && props.dangerouslySetInnerHTML !== null && props.dangerouslySetInnerHTML.__html !== null;
 	};
-	var createInstance = function createInstance(type, props) {
+	var createInstance = function createInstance(type, props, internalInstanceHandle) {
 	  var domElement = document.createElement(type); //todo
 	  //updateFiberProps(domElement, props)
 
+	  precacheFiberNode(internalInstanceHandle, domElement);
+	  updateFiberProps(domElement, props);
 	  return domElement;
 	};
 	var appendInitialChild = function appendInitialChild(parentInstance, child) {
@@ -2306,7 +2419,7 @@
 	var appendChild = function appendChild(parentInstance, child) {
 	  parentInstance.appendChild(child);
 	};
-	var COMMENT_NODE = 8;
+	var COMMENT_NODE$1 = 8;
 	/**
 	 * 和appendChild一样，只是多了个判断是否是注释节点
 	 * @param container React.render第二个参数
@@ -2315,7 +2428,7 @@
 	 */
 
 	var insertInContainerBefore = function insertInContainerBefore(container, child, beforeChild) {
-	  if (container.nodeType === COMMENT_NODE) {
+	  if (container.nodeType === COMMENT_NODE$1) {
 	    var _container$parentNode;
 
 	    (_container$parentNode = container.parentNode) === null || _container$parentNode === void 0 ? void 0 : _container$parentNode.insertBefore(child, beforeChild);
@@ -2326,7 +2439,7 @@
 	var appendChildToContainer = function appendChildToContainer(container, child) {
 	  var parentNode;
 
-	  if (container.nodeType === COMMENT_NODE) {
+	  if (container.nodeType === COMMENT_NODE$1) {
 	    var _parentNode;
 
 	    parentNode = container.parentNode;
@@ -2941,7 +3054,7 @@
 	          //todo
 	          throw new Error('Not Implement');
 	        } else {
-	          var instance = createInstance(type); //由于是前序遍历，当workInProgress进行归阶段时，
+	          var instance = createInstance(type, newProps, workInProgress); //由于是前序遍历，当workInProgress进行归阶段时，
 	          //其所有子节点都已完成了递和归阶段，也就是意味着其子树的所有dom节点已经创建
 	          //所以只需要把子树中离instance最近的dom节点追加到instance上即可
 
@@ -3103,6 +3216,12 @@
 	  performSyncWorkOnRoot(root);
 	  return root;
 	};
+	var discreteUpdates$1 = function discreteUpdates(fn, a, b, c, d) {
+	  return fn(a, b, c, d);
+	};
+	var batchedEventUpdates$1 = function batchedEventUpdates(fn, a) {
+	  return fn(a);
+	};
 
 	/**
 	 *
@@ -3130,6 +3249,878 @@
 	  scheduleUpdateOnFiber(current);
 	};
 
+	var freezing = !fails(function () {
+	  return Object.isExtensible(Object.preventExtensions({}));
+	});
+
+	var internalMetadata = createCommonjsModule(function (module) {
+	var defineProperty = objectDefineProperty.f;
+
+
+
+	var METADATA = uid('meta');
+	var id = 0;
+
+	var isExtensible = Object.isExtensible || function () {
+	  return true;
+	};
+
+	var setMetadata = function (it) {
+	  defineProperty(it, METADATA, { value: {
+	    objectID: 'O' + ++id, // object ID
+	    weakData: {}          // weak collections IDs
+	  } });
+	};
+
+	var fastKey = function (it, create) {
+	  // return a primitive with prefix
+	  if (!isObject(it)) return typeof it == 'symbol' ? it : (typeof it == 'string' ? 'S' : 'P') + it;
+	  if (!has(it, METADATA)) {
+	    // can't set metadata to uncaught frozen object
+	    if (!isExtensible(it)) return 'F';
+	    // not necessary to add metadata
+	    if (!create) return 'E';
+	    // add missing metadata
+	    setMetadata(it);
+	  // return object ID
+	  } return it[METADATA].objectID;
+	};
+
+	var getWeakData = function (it, create) {
+	  if (!has(it, METADATA)) {
+	    // can't set metadata to uncaught frozen object
+	    if (!isExtensible(it)) return true;
+	    // not necessary to add metadata
+	    if (!create) return false;
+	    // add missing metadata
+	    setMetadata(it);
+	  // return the store of weak collections IDs
+	  } return it[METADATA].weakData;
+	};
+
+	// add metadata on freeze-family methods calling
+	var onFreeze = function (it) {
+	  if (freezing && meta.REQUIRED && isExtensible(it) && !has(it, METADATA)) setMetadata(it);
+	  return it;
+	};
+
+	var meta = module.exports = {
+	  REQUIRED: false,
+	  fastKey: fastKey,
+	  getWeakData: getWeakData,
+	  onFreeze: onFreeze
+	};
+
+	hiddenKeys[METADATA] = true;
+	});
+	var internalMetadata_1 = internalMetadata.REQUIRED;
+	var internalMetadata_2 = internalMetadata.fastKey;
+	var internalMetadata_3 = internalMetadata.getWeakData;
+	var internalMetadata_4 = internalMetadata.onFreeze;
+
+	var ITERATOR$2 = wellKnownSymbol('iterator');
+	var ArrayPrototype$1 = Array.prototype;
+
+	// check on default Array iterator
+	var isArrayIteratorMethod = function (it) {
+	  return it !== undefined && (iterators.Array === it || ArrayPrototype$1[ITERATOR$2] === it);
+	};
+
+	var ITERATOR$3 = wellKnownSymbol('iterator');
+
+	var getIteratorMethod = function (it) {
+	  if (it != undefined) return it[ITERATOR$3]
+	    || it['@@iterator']
+	    || iterators[classof(it)];
+	};
+
+	var iteratorClose = function (iterator) {
+	  var returnMethod = iterator['return'];
+	  if (returnMethod !== undefined) {
+	    return anObject(returnMethod.call(iterator)).value;
+	  }
+	};
+
+	var Result = function (stopped, result) {
+	  this.stopped = stopped;
+	  this.result = result;
+	};
+
+	var iterate = function (iterable, unboundFunction, options) {
+	  var that = options && options.that;
+	  var AS_ENTRIES = !!(options && options.AS_ENTRIES);
+	  var IS_ITERATOR = !!(options && options.IS_ITERATOR);
+	  var INTERRUPTED = !!(options && options.INTERRUPTED);
+	  var fn = functionBindContext(unboundFunction, that, 1 + AS_ENTRIES + INTERRUPTED);
+	  var iterator, iterFn, index, length, result, next, step;
+
+	  var stop = function (condition) {
+	    if (iterator) iteratorClose(iterator);
+	    return new Result(true, condition);
+	  };
+
+	  var callFn = function (value) {
+	    if (AS_ENTRIES) {
+	      anObject(value);
+	      return INTERRUPTED ? fn(value[0], value[1], stop) : fn(value[0], value[1]);
+	    } return INTERRUPTED ? fn(value, stop) : fn(value);
+	  };
+
+	  if (IS_ITERATOR) {
+	    iterator = iterable;
+	  } else {
+	    iterFn = getIteratorMethod(iterable);
+	    if (typeof iterFn != 'function') throw TypeError('Target is not iterable');
+	    // optimisation for array iterators
+	    if (isArrayIteratorMethod(iterFn)) {
+	      for (index = 0, length = toLength(iterable.length); length > index; index++) {
+	        result = callFn(iterable[index]);
+	        if (result && result instanceof Result) return result;
+	      } return new Result(false);
+	    }
+	    iterator = iterFn.call(iterable);
+	  }
+
+	  next = iterator.next;
+	  while (!(step = next.call(iterator)).done) {
+	    try {
+	      result = callFn(step.value);
+	    } catch (error) {
+	      iteratorClose(iterator);
+	      throw error;
+	    }
+	    if (typeof result == 'object' && result && result instanceof Result) return result;
+	  } return new Result(false);
+	};
+
+	var anInstance = function (it, Constructor, name) {
+	  if (!(it instanceof Constructor)) {
+	    throw TypeError('Incorrect ' + (name ? name + ' ' : '') + 'invocation');
+	  } return it;
+	};
+
+	var defineProperty$6 = objectDefineProperty.f;
+	var forEach = arrayIteration.forEach;
+
+
+
+	var setInternalState$3 = internalState.set;
+	var internalStateGetterFor = internalState.getterFor;
+
+	var collection = function (CONSTRUCTOR_NAME, wrapper, common) {
+	  var IS_MAP = CONSTRUCTOR_NAME.indexOf('Map') !== -1;
+	  var IS_WEAK = CONSTRUCTOR_NAME.indexOf('Weak') !== -1;
+	  var ADDER = IS_MAP ? 'set' : 'add';
+	  var NativeConstructor = global_1[CONSTRUCTOR_NAME];
+	  var NativePrototype = NativeConstructor && NativeConstructor.prototype;
+	  var exported = {};
+	  var Constructor;
+
+	  if (!descriptors || typeof NativeConstructor != 'function'
+	    || !(IS_WEAK || NativePrototype.forEach && !fails(function () { new NativeConstructor().entries().next(); }))
+	  ) {
+	    // create collection constructor
+	    Constructor = common.getConstructor(wrapper, CONSTRUCTOR_NAME, IS_MAP, ADDER);
+	    internalMetadata.REQUIRED = true;
+	  } else {
+	    Constructor = wrapper(function (target, iterable) {
+	      setInternalState$3(anInstance(target, Constructor, CONSTRUCTOR_NAME), {
+	        type: CONSTRUCTOR_NAME,
+	        collection: new NativeConstructor()
+	      });
+	      if (iterable != undefined) iterate(iterable, target[ADDER], { that: target, AS_ENTRIES: IS_MAP });
+	    });
+
+	    var getInternalState = internalStateGetterFor(CONSTRUCTOR_NAME);
+
+	    forEach(['add', 'clear', 'delete', 'forEach', 'get', 'has', 'set', 'keys', 'values', 'entries'], function (KEY) {
+	      var IS_ADDER = KEY == 'add' || KEY == 'set';
+	      if (KEY in NativePrototype && !(IS_WEAK && KEY == 'clear')) {
+	        createNonEnumerableProperty(Constructor.prototype, KEY, function (a, b) {
+	          var collection = getInternalState(this).collection;
+	          if (!IS_ADDER && IS_WEAK && !isObject(a)) return KEY == 'get' ? undefined : false;
+	          var result = collection[KEY](a === 0 ? 0 : a, b);
+	          return IS_ADDER ? this : result;
+	        });
+	      }
+	    });
+
+	    IS_WEAK || defineProperty$6(Constructor.prototype, 'size', {
+	      configurable: true,
+	      get: function () {
+	        return getInternalState(this).collection.size;
+	      }
+	    });
+	  }
+
+	  setToStringTag(Constructor, CONSTRUCTOR_NAME, false, true);
+
+	  exported[CONSTRUCTOR_NAME] = Constructor;
+	  _export({ global: true, forced: true }, exported);
+
+	  if (!IS_WEAK) common.setStrong(Constructor, CONSTRUCTOR_NAME, IS_MAP);
+
+	  return Constructor;
+	};
+
+	var redefineAll = function (target, src, options) {
+	  for (var key in src) {
+	    if (options && options.unsafe && target[key]) target[key] = src[key];
+	    else redefine(target, key, src[key], options);
+	  } return target;
+	};
+
+	var SPECIES$3 = wellKnownSymbol('species');
+
+	var setSpecies = function (CONSTRUCTOR_NAME) {
+	  var Constructor = getBuiltIn(CONSTRUCTOR_NAME);
+	  var defineProperty = objectDefineProperty.f;
+
+	  if (descriptors && Constructor && !Constructor[SPECIES$3]) {
+	    defineProperty(Constructor, SPECIES$3, {
+	      configurable: true,
+	      get: function () { return this; }
+	    });
+	  }
+	};
+
+	var defineProperty$7 = objectDefineProperty.f;
+
+
+
+
+
+
+
+
+	var fastKey = internalMetadata.fastKey;
+
+
+	var setInternalState$4 = internalState.set;
+	var internalStateGetterFor$1 = internalState.getterFor;
+
+	var collectionStrong = {
+	  getConstructor: function (wrapper, CONSTRUCTOR_NAME, IS_MAP, ADDER) {
+	    var C = wrapper(function (that, iterable) {
+	      anInstance(that, C, CONSTRUCTOR_NAME);
+	      setInternalState$4(that, {
+	        type: CONSTRUCTOR_NAME,
+	        index: objectCreate(null),
+	        first: undefined,
+	        last: undefined,
+	        size: 0
+	      });
+	      if (!descriptors) that.size = 0;
+	      if (iterable != undefined) iterate(iterable, that[ADDER], { that: that, AS_ENTRIES: IS_MAP });
+	    });
+
+	    var getInternalState = internalStateGetterFor$1(CONSTRUCTOR_NAME);
+
+	    var define = function (that, key, value) {
+	      var state = getInternalState(that);
+	      var entry = getEntry(that, key);
+	      var previous, index;
+	      // change existing entry
+	      if (entry) {
+	        entry.value = value;
+	      // create new entry
+	      } else {
+	        state.last = entry = {
+	          index: index = fastKey(key, true),
+	          key: key,
+	          value: value,
+	          previous: previous = state.last,
+	          next: undefined,
+	          removed: false
+	        };
+	        if (!state.first) state.first = entry;
+	        if (previous) previous.next = entry;
+	        if (descriptors) state.size++;
+	        else that.size++;
+	        // add to index
+	        if (index !== 'F') state.index[index] = entry;
+	      } return that;
+	    };
+
+	    var getEntry = function (that, key) {
+	      var state = getInternalState(that);
+	      // fast case
+	      var index = fastKey(key);
+	      var entry;
+	      if (index !== 'F') return state.index[index];
+	      // frozen object case
+	      for (entry = state.first; entry; entry = entry.next) {
+	        if (entry.key == key) return entry;
+	      }
+	    };
+
+	    redefineAll(C.prototype, {
+	      // 23.1.3.1 Map.prototype.clear()
+	      // 23.2.3.2 Set.prototype.clear()
+	      clear: function clear() {
+	        var that = this;
+	        var state = getInternalState(that);
+	        var data = state.index;
+	        var entry = state.first;
+	        while (entry) {
+	          entry.removed = true;
+	          if (entry.previous) entry.previous = entry.previous.next = undefined;
+	          delete data[entry.index];
+	          entry = entry.next;
+	        }
+	        state.first = state.last = undefined;
+	        if (descriptors) state.size = 0;
+	        else that.size = 0;
+	      },
+	      // 23.1.3.3 Map.prototype.delete(key)
+	      // 23.2.3.4 Set.prototype.delete(value)
+	      'delete': function (key) {
+	        var that = this;
+	        var state = getInternalState(that);
+	        var entry = getEntry(that, key);
+	        if (entry) {
+	          var next = entry.next;
+	          var prev = entry.previous;
+	          delete state.index[entry.index];
+	          entry.removed = true;
+	          if (prev) prev.next = next;
+	          if (next) next.previous = prev;
+	          if (state.first == entry) state.first = next;
+	          if (state.last == entry) state.last = prev;
+	          if (descriptors) state.size--;
+	          else that.size--;
+	        } return !!entry;
+	      },
+	      // 23.2.3.6 Set.prototype.forEach(callbackfn, thisArg = undefined)
+	      // 23.1.3.5 Map.prototype.forEach(callbackfn, thisArg = undefined)
+	      forEach: function forEach(callbackfn /* , that = undefined */) {
+	        var state = getInternalState(this);
+	        var boundFunction = functionBindContext(callbackfn, arguments.length > 1 ? arguments[1] : undefined, 3);
+	        var entry;
+	        while (entry = entry ? entry.next : state.first) {
+	          boundFunction(entry.value, entry.key, this);
+	          // revert to the last existing entry
+	          while (entry && entry.removed) entry = entry.previous;
+	        }
+	      },
+	      // 23.1.3.7 Map.prototype.has(key)
+	      // 23.2.3.7 Set.prototype.has(value)
+	      has: function has(key) {
+	        return !!getEntry(this, key);
+	      }
+	    });
+
+	    redefineAll(C.prototype, IS_MAP ? {
+	      // 23.1.3.6 Map.prototype.get(key)
+	      get: function get(key) {
+	        var entry = getEntry(this, key);
+	        return entry && entry.value;
+	      },
+	      // 23.1.3.9 Map.prototype.set(key, value)
+	      set: function set(key, value) {
+	        return define(this, key === 0 ? 0 : key, value);
+	      }
+	    } : {
+	      // 23.2.3.1 Set.prototype.add(value)
+	      add: function add(value) {
+	        return define(this, value = value === 0 ? 0 : value, value);
+	      }
+	    });
+	    if (descriptors) defineProperty$7(C.prototype, 'size', {
+	      get: function () {
+	        return getInternalState(this).size;
+	      }
+	    });
+	    return C;
+	  },
+	  setStrong: function (C, CONSTRUCTOR_NAME, IS_MAP) {
+	    var ITERATOR_NAME = CONSTRUCTOR_NAME + ' Iterator';
+	    var getInternalCollectionState = internalStateGetterFor$1(CONSTRUCTOR_NAME);
+	    var getInternalIteratorState = internalStateGetterFor$1(ITERATOR_NAME);
+	    // add .keys, .values, .entries, [@@iterator]
+	    // 23.1.3.4, 23.1.3.8, 23.1.3.11, 23.1.3.12, 23.2.3.5, 23.2.3.8, 23.2.3.10, 23.2.3.11
+	    defineIterator(C, CONSTRUCTOR_NAME, function (iterated, kind) {
+	      setInternalState$4(this, {
+	        type: ITERATOR_NAME,
+	        target: iterated,
+	        state: getInternalCollectionState(iterated),
+	        kind: kind,
+	        last: undefined
+	      });
+	    }, function () {
+	      var state = getInternalIteratorState(this);
+	      var kind = state.kind;
+	      var entry = state.last;
+	      // revert to the last existing entry
+	      while (entry && entry.removed) entry = entry.previous;
+	      // get next entry
+	      if (!state.target || !(state.last = entry = entry ? entry.next : state.state.first)) {
+	        // or finish the iteration
+	        state.target = undefined;
+	        return { value: undefined, done: true };
+	      }
+	      // return step by kind
+	      if (kind == 'keys') return { value: entry.key, done: false };
+	      if (kind == 'values') return { value: entry.value, done: false };
+	      return { value: [entry.key, entry.value], done: false };
+	    }, IS_MAP ? 'entries' : 'values', !IS_MAP, true);
+
+	    // add [@@species], 23.1.2.2, 23.2.2.2
+	    setSpecies(CONSTRUCTOR_NAME);
+	  }
+	};
+
+	// `Set` constructor
+	// https://tc39.es/ecma262/#sec-set-objects
+	var es_set = collection('Set', function (init) {
+	  return function Set() { return init(this, arguments.length ? arguments[0] : undefined); };
+	}, collectionStrong);
+
+	var set$1 = path.Set;
+
+	var set$2 = set$1;
+
+	var set$3 = set$2;
+
+	var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+	  var method = [][METHOD_NAME];
+	  return !!method && fails(function () {
+	    // eslint-disable-next-line no-useless-call,no-throw-literal -- required for testing
+	    method.call(null, argument || function () { throw 1; }, 1);
+	  });
+	};
+
+	var $forEach$1 = arrayIteration.forEach;
+
+
+	var STRICT_METHOD = arrayMethodIsStrict('forEach');
+
+	// `Array.prototype.forEach` method implementation
+	// https://tc39.es/ecma262/#sec-array.prototype.foreach
+	var arrayForEach = !STRICT_METHOD ? function forEach(callbackfn /* , thisArg */) {
+	  return $forEach$1(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+	} : [].forEach;
+
+	// `Array.prototype.forEach` method
+	// https://tc39.es/ecma262/#sec-array.prototype.foreach
+	_export({ target: 'Array', proto: true, forced: [].forEach != arrayForEach }, {
+	  forEach: arrayForEach
+	});
+
+	var forEach$1 = entryVirtual('Array').forEach;
+
+	var forEach$2 = forEach$1;
+
+	var ArrayPrototype$2 = Array.prototype;
+
+	var DOMIterables = {
+	  DOMTokenList: true,
+	  NodeList: true
+	};
+
+	var forEach_1 = function (it) {
+	  var own = it.forEach;
+	  return it === ArrayPrototype$2 || (it instanceof Array && own === ArrayPrototype$2.forEach)
+	    // eslint-disable-next-line no-prototype-builtins -- safe
+	    || DOMIterables.hasOwnProperty(classof(it)) ? forEach$2 : own;
+	};
+
+	var forEach$3 = forEach_1;
+
+	var addEventCaptureListenerWithPassiveFlag = function addEventCaptureListenerWithPassiveFlag(target, eventType, listener, passive) {
+	  target.addEventListener(eventType, listener, {
+	    capture: true,
+	    passive: passive
+	  });
+	  return listener;
+	};
+	var addEventCaptureListener = function addEventCaptureListener(target, eventType, listener) {
+	  target.addEventListener(eventType, listener, true);
+	  return listener;
+	};
+	var addEventBubbleListenerWithPassiveFlag = function addEventBubbleListenerWithPassiveFlag(target, eventType, listener, passive) {
+	  target.addEventListener(eventType, listener, {
+	    passive: passive
+	  });
+	  return listener;
+	};
+	var addEventBubbleListener = function addEventBubbleListener(target, eventType, listener) {
+	  target.addEventListener(eventType, listener, false);
+	  return listener;
+	};
+
+	var allNativeEvents = new set$3();
+	/**
+	 * Mapping from registration name to event name
+	 */
+
+	var registrationNameDependencies = {};
+	var registerDirectEvent = function registerDirectEvent(registrationName, dependencies) {
+	  if (registrationNameDependencies[registrationName]) {
+	    console.error('EventRegistry: More than one plugin attempted to publish the same ' + 'registration name, `%s`.', registrationName);
+	  }
+
+	  registrationNameDependencies[registrationName] = dependencies;
+
+	  for (var i = 0; i < dependencies.length; ++i) {
+	    allNativeEvents.add(dependencies[i]);
+	  }
+	};
+	var registerTwoPhaseEvent = function registerTwoPhaseEvent(registrationName, dependencies) {
+	  registerDirectEvent(registrationName, dependencies);
+	  registerDirectEvent(registrationName + 'Capture', dependencies);
+	};
+
+	var IS_CAPTURE_PHASE = 1 << 2;
+
+	var getEventTarget = function getEventTarget(nativeEvent) {
+	  var target = nativeEvent.target || window;
+	  return target.nodeType === TEXT_NODE ? target.parentNode : target;
+	};
+
+	var isInteractive = function isInteractive(tag) {
+	  return tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea';
+	};
+
+	var shouldPreventMouseEvent = function shouldPreventMouseEvent(name, type, props) {
+	  switch (name) {
+	    case 'onClick':
+	    case 'onClickCapture':
+	      return !!(props.disabled && isInteractive(type));
+
+	    default:
+	      return true;
+	  }
+	};
+
+	var getListener = function getListener(instance, registrationName) {
+	  var stateNode = instance.stateNode;
+	  if (stateNode === null) return null;
+	  var props = getFiberCurrentPropsFromNode(stateNode);
+	  if (props === null) return null;
+	  var listener = props[registrationName];
+	  if (shouldPreventMouseEvent(registrationName, instance.type, props)) return null;
+	  return listener !== null && listener !== void 0 ? listener : null;
+	};
+
+	// `Map` constructor
+	// https://tc39.es/ecma262/#sec-map-objects
+	var es_map = collection('Map', function (init) {
+	  return function Map() { return init(this, arguments.length ? arguments[0] : undefined); };
+	}, collectionStrong);
+
+	var map = path.Map;
+
+	var map$1 = map;
+
+	var map$2 = map$1;
+
+	/**
+	 * click、keydown、focusin等，这些事件的触发不是连续的，优先级为0。
+	 */
+	var DiscreteEvent = 0;
+	/**
+	 * canplay、error、audio标签的timeupdate和canplay，优先级最高，为2。
+	 */
+
+	var ContinuousEvent = 2;
+
+	var eventPriorities = new map$2(); // prettier-ignore
+
+	var discreteEventPairsForSimpleEventPlugin = ['cancel', 'cancel', 'click', 'click', 'close', 'close', 'contextmenu', 'contextMenu', 'copy', 'copy', 'cut', 'cut', 'auxclick', 'auxClick', 'dblclick', 'doubleClick', // Careful!
+	'dragend', 'dragEnd', 'dragstart', 'dragStart', 'drop', 'drop', 'focusin', 'focus', // Careful!
+	'focusout', 'blur', // Careful!
+	'input', 'input', 'invalid', 'invalid', 'keydown', 'keyDown', 'keypress', 'keyPress', 'keyup', 'keyUp', 'mousedown', 'mouseDown', 'mouseup', 'mouseUp', 'paste', 'paste', 'pause', 'pause', 'play', 'play', 'pointercancel', 'pointerCancel', 'pointerdown', 'pointerDown', 'pointerup', 'pointerUp', 'ratechange', 'rateChange', 'reset', 'reset', 'seeked', 'seeked', 'submit', 'submit', 'touchcancel', 'touchCancel', 'touchend', 'touchEnd', 'touchstart', 'touchStart', 'volumechange', 'volumeChange'];
+	var topLevelEventsToReactNames = new map$2();
+
+	var registerSimplePluginEventsAndSetTheirPriorities = function registerSimplePluginEventsAndSetTheirPriorities(eventTypes, priority) {
+	  for (var i = 0; i < eventTypes.length; i += 2) {
+	    var topEvent = eventTypes[i];
+	    var event = eventTypes[i + 1];
+
+	    var capitalizedEvent = event[0].toUpperCase() + slice$2(event).call(event, 1);
+
+	    var reactName = 'on' + capitalizedEvent;
+	    eventPriorities.set(topEvent, priority);
+	    topLevelEventsToReactNames.set(topEvent, reactName);
+	    registerTwoPhaseEvent(reactName, [topEvent]);
+	  }
+	};
+
+	var getEventPriorityForPluginSystem = function getEventPriorityForPluginSystem(domEventName) {
+	  var priority = eventPriorities.get(domEventName);
+	  return priority === undefined ? ContinuousEvent : priority;
+	};
+	var registerSimpleEvents = function registerSimpleEvents() {
+	  registerSimplePluginEventsAndSetTheirPriorities(discreteEventPairsForSimpleEventPlugin, DiscreteEvent);
+	};
+
+	var createSyntheticEvent = function createSyntheticEvent() {
+	  var SyntheticBaseEvent = function SyntheticBaseEvent() {
+	    _classCallCheck(this, SyntheticBaseEvent);
+	  };
+
+	  return SyntheticBaseEvent;
+	};
+	var SyntheticEvent = createSyntheticEvent();
+	var SyntheticMouseEvent = createSyntheticEvent();
+
+	var extractEvents = function extractEvents(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags, targetContainer) {
+	  var _topLevelEventsToReac;
+
+	  var SyntheticEventCtor = SyntheticEvent;
+
+	  switch (domEventName) {
+	    case 'click':
+	      SyntheticEventCtor = SyntheticMouseEvent;
+	      break;
+	  }
+
+	  var reactName = (_topLevelEventsToReac = topLevelEventsToReactNames.get(domEventName)) !== null && _topLevelEventsToReac !== void 0 ? _topLevelEventsToReac : null;
+	  var inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
+	  var accumulateTargetOnly = !inCapturePhase && domEventName === 'scroll';
+	  var listeners = accumulateSinglePhaseListeners(targetInst, reactName, inCapturePhase, accumulateTargetOnly);
+
+	  if (listeners.length) {
+	    var event = new SyntheticEventCtor();
+	    dispatchQueue.push({
+	      event: event,
+	      listeners: listeners
+	    });
+	  }
+	};
+
+	var slice$3 = [].slice;
+	var factories = {};
+
+	var construct = function (C, argsLength, args) {
+	  if (!(argsLength in factories)) {
+	    for (var list = [], i = 0; i < argsLength; i++) list[i] = 'a[' + i + ']';
+	    // eslint-disable-next-line no-new-func -- we have no proper alternatives, IE8- only
+	    factories[argsLength] = Function('C,a', 'return new C(' + list.join(',') + ')');
+	  } return factories[argsLength](C, args);
+	};
+
+	// `Function.prototype.bind` method implementation
+	// https://tc39.es/ecma262/#sec-function.prototype.bind
+	var functionBind = Function.bind || function bind(that /* , ...args */) {
+	  var fn = aFunction(this);
+	  var partArgs = slice$3.call(arguments, 1);
+	  var boundFunction = function bound(/* args... */) {
+	    var args = partArgs.concat(slice$3.call(arguments));
+	    return this instanceof boundFunction ? construct(fn, args.length, args) : fn.apply(that, args);
+	  };
+	  if (isObject(fn.prototype)) boundFunction.prototype = fn.prototype;
+	  return boundFunction;
+	};
+
+	// `Function.prototype.bind` method
+	// https://tc39.es/ecma262/#sec-function.prototype.bind
+	_export({ target: 'Function', proto: true }, {
+	  bind: functionBind
+	});
+
+	var bind = entryVirtual('Function').bind;
+
+	var FunctionPrototype = Function.prototype;
+
+	var bind_1 = function (it) {
+	  var own = it.bind;
+	  return it === FunctionPrototype || (it instanceof Function && own === FunctionPrototype.bind) ? bind : own;
+	};
+
+	var bind$1 = bind_1;
+
+	var bind$2 = bind$1;
+
+	var dispatchDiscreteEvent = function dispatchDiscreteEvent(domEventName, eventSymtemFlags, container, nativeEvent) {
+	  discreteUpdates(dispatchEvent, domEventName, eventSymtemFlags, container, nativeEvent);
+	};
+
+	var attemptToDispatchEvent = function attemptToDispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent) {
+	  var nativeEventTarget = getEventTarget(nativeEvent);
+	  var targetInst = getClosestInstanceFromNode(nativeEventTarget);
+	  dispatchEventForPluginEventSystem(domEventName, eventSystemFlags, nativeEvent, targetInst);
+	  return null;
+	};
+
+	var dispatchEvent = function dispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent) {
+	  attemptToDispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent);
+	};
+	var createEventListenerWrapperWithPriority = function createEventListenerWrapperWithPriority(targetContainer, domEventName, eventSymtemFlags) {
+	  var eventPriority = getEventPriorityForPluginSystem(domEventName);
+	  var listenerWrapper;
+
+	  switch (eventPriority) {
+	    case DiscreteEvent:
+	      listenerWrapper = dispatchDiscreteEvent;
+	      break;
+
+	    default:
+	      throw new Error('Not Implement');
+	  }
+
+	  return bind$2(listenerWrapper).call(listenerWrapper, null, domEventName, eventSymtemFlags, targetContainer);
+	};
+
+	var _context$1;
+
+	var listeningMarker = '_reactListening' + slice$2(_context$1 = Math.random().toString(36)).call(_context$1, 2);
+
+	registerSimpleEvents();
+	/**
+	 * 我们不因该在container代理这些事件，而是因该把他们添加到真正的目标dom上
+	 * 主要是因为这些事件的冒泡不具有一致性
+	 */
+
+	var nonDelegatedEvents = new set$3(['cancel', 'close', 'invalid', 'load', 'scroll', 'toggle']);
+
+	var addTrappedEventListener = function addTrappedEventListener(targetContainer, domEventName, eventSystemFlags, isCapturePhaseListener) {
+	  var listener = createEventListenerWrapperWithPriority(targetContainer, domEventName, eventSystemFlags);
+	  var isPassiveListener = undefined;
+
+	  if (domEventName === 'wheel' || domEventName === 'touchmove' || domEventName === 'touchstart') {
+	    isPassiveListener = true;
+	  }
+
+	  var unsubscribeListener;
+
+	  if (isCapturePhaseListener) {
+	    if (isPassiveListener !== undefined) {
+	      unsubscribeListener = addEventCaptureListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
+	    } else {
+	      unsubscribeListener = addEventCaptureListener(targetContainer, domEventName, listener);
+	    }
+	  } else {
+	    if (isPassiveListener !== undefined) {
+	      unsubscribeListener = addEventBubbleListenerWithPassiveFlag(targetContainer, domEventName, listener, isPassiveListener);
+	    } else {
+	      unsubscribeListener = addEventBubbleListener(targetContainer, domEventName, listener);
+	    }
+	  }
+	};
+
+	var listenToNativeEvent = function listenToNativeEvent(domEventName, isCapturePhaseListener, target) {
+	  var eventSystemFlags = 0;
+
+	  if (isCapturePhaseListener) {
+	    eventSystemFlags |= IS_CAPTURE_PHASE;
+	  }
+
+	  addTrappedEventListener(target, domEventName, eventSystemFlags, isCapturePhaseListener);
+	};
+
+	var listenToAllSupportedEvents = function listenToAllSupportedEvents(rootContainerElement) {
+	  if (!rootContainerElement[listeningMarker]) {
+	    forEach$3(allNativeEvents).call(allNativeEvents, function (domEventName) {
+	      /**
+	       * 单独处理selectionchange因为他不会冒泡，而且需要设置在document上
+	       */
+	      if (domEventName !== 'selectionchange') {
+	        if (!nonDelegatedEvents.has(domEventName)) {
+	          listenToNativeEvent(domEventName, false, rootContainerElement);
+	        }
+
+	        listenToNativeEvent(domEventName, true, rootContainerElement);
+	      }
+	    });
+	  }
+	};
+
+	var extractEvents$1 = function extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags, targetContainer) {
+	  extractEvents(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags);
+	};
+
+	var createDispatchListener = function createDispatchListener(instance, listener, currentTarget) {
+	  return {
+	    instance: instance,
+	    listener: listener,
+	    currentTarget: currentTarget
+	  };
+	};
+
+	var accumulateSinglePhaseListeners = function accumulateSinglePhaseListeners(targetFiber, reactName, inCapturePhase, accumulateTargetOnly) {
+	  var captureName = reactName !== null ? reactName + 'Capture' : null;
+	  var reactEventName = inCapturePhase ? captureName : reactName;
+	  var listeners = [];
+	  var instance = targetFiber;
+	  var lastHostComponent = null;
+
+	  while (instance !== null) {
+	    var _instance = instance,
+	        tag = _instance.tag,
+	        stateNode = _instance.stateNode;
+
+	    if (tag === HostComponent && stateNode !== null) {
+	      lastHostComponent = stateNode;
+
+	      if (reactEventName !== null) {
+	        var listener = getListener(instance, reactEventName);
+
+	        if (listener !== null) {
+	          listeners.push(createDispatchListener(instance, listener, lastHostComponent));
+	        }
+	      }
+	    }
+
+	    if (accumulateTargetOnly) break;
+	    instance = instance["return"];
+	  }
+
+	  return listeners;
+	};
+
+	var executeDispatch = function executeDispatch(event, listener, currentTarget) {
+	  listener(event);
+	};
+
+	var processDispatchQueueItemsInOrder = function processDispatchQueueItemsInOrder(event, dispatchListeners, inCapturePhase) {
+	  if (inCapturePhase) {
+	    for (var i = dispatchListeners.length - 1; i >= 0; --i) {
+	      var _dispatchListeners$i = dispatchListeners[i],
+	          instance = _dispatchListeners$i.instance,
+	          currentTarget = _dispatchListeners$i.currentTarget,
+	          listener = _dispatchListeners$i.listener; //todo isPropagationStopped
+
+	      executeDispatch(event, listener);
+	    }
+	  } else {
+	    for (var _i = 0; _i < dispatchListeners.length; ++_i) {
+	      var _dispatchListeners$_i = dispatchListeners[_i],
+	          _instance2 = _dispatchListeners$_i.instance,
+	          _currentTarget = _dispatchListeners$_i.currentTarget,
+	          _listener = _dispatchListeners$_i.listener; //todo isPropagationStopped
+
+	      executeDispatch(event, _listener);
+	    }
+	  }
+	};
+
+	var processDispatchQueue = function processDispatchQueue(dispatchQueue, eventSystemFlags) {
+	  var inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
+
+	  for (var i = 0; i < dispatchQueue.length; ++i) {
+	    var _dispatchQueue$i = dispatchQueue[i],
+	        event = _dispatchQueue$i.event,
+	        listeners = _dispatchQueue$i.listeners;
+	    processDispatchQueueItemsInOrder(event, listeners, inCapturePhase);
+	  }
+	};
+
+	var dispatchEventsForPlugins = function dispatchEventsForPlugins(domEventName, eventSystemFlags, nativeEvent, targetInst, targetContainer) {
+	  var nativeEventTarget = getEventTarget(nativeEvent);
+	  var dispatchQueue = [];
+	  extractEvents$1(dispatchQueue, domEventName, targetInst, nativeEvent, nativeEventTarget, eventSystemFlags);
+	  processDispatchQueue(dispatchQueue, eventSystemFlags);
+	};
+
+	var dispatchEventForPluginEventSystem = function dispatchEventForPluginEventSystem(domEventName, eventSystemFlags, nativeEvent, targetInst, targetContainer) {
+	  var ancestorInst = targetInst;
+	  batchedEventUpdates(function () {
+	    return dispatchEventsForPlugins(domEventName, eventSystemFlags, nativeEvent, ancestorInst);
+	  }, null);
+	};
+
 	/**
 	 * createRoot创建节点是使用的类（ConcurrentRoot）
 	 */
@@ -3140,9 +4131,10 @@
 	    _defineProperty(this, "_internalRoot", void 0);
 
 	    var root = createContainer(container, ConcurrentRoot);
-	    this._internalRoot = root; // const rootContainerElement =
-	    //   container.nodeType === COMMENT_NODE ? container.parentNode : container
-	    // listenToAllSupportedEvents(rootContainerElement)
+	    this._internalRoot = root;
+	    var rootContainerElement = container.nodeType === COMMENT_NODE ? container.parentNode : container; //在container上初始化事件系统
+
+	    listenToAllSupportedEvents(rootContainerElement);
 	  }
 
 	  _createClass(ReactDomRoot, [{
@@ -3160,12 +4152,18 @@
 	  return new ReactDomRoot(container);
 	};
 
-	var Wrapper = function Wrapper() {
-	  return /*#__PURE__*/React.createElement("div", null, "wrapper");
-	};
+	setBatchingImplementation(discreteUpdates$1, batchedEventUpdates$1);
 
 	var App = function App() {
-	  return /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(Wrapper, null), /*#__PURE__*/React.createElement("div", null, "sdf"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("a", null, "sldfj"), /*#__PURE__*/React.createElement("div", null, "sdlf"), "sdfsd"));
+	  return /*#__PURE__*/React.createElement("span", {
+	    // onClick={() => {
+	    //   console.log('span bubble')
+	    // }}
+	    onClickCapture: function onClickCapture() {
+	      debugger;
+	      console.log('span capture');
+	    }
+	  }, "sdfsad");
 	};
 
 	createRoot(document.querySelector('#app')).render( /*#__PURE__*/React.createElement(App, null)); // ReactDom.render(<App />, document.querySelector('#app')!)

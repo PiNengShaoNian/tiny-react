@@ -1,7 +1,12 @@
-import { createContainer, updateContainer } from '../react-reconciler/ReactFiberReconciler'
+import {
+  createContainer,
+  updateContainer,
+} from '../react-reconciler/ReactFiberReconciler'
 import { FiberRoot } from '../react-reconciler/ReactInternalTypes'
 import { ConcurrentRoot } from '../react-reconciler/ReactRootTags'
 import { ReactNodeList } from '../shared/ReactTypes'
+import { listenToAllSupportedEvents } from './events/DOMPluginEventSystem'
+import { COMMENT_NODE } from './shared/HTMLNodeType'
 
 export type Container =
   | (Element & { _reactRootContainer?: RootType })
@@ -21,9 +26,11 @@ class ReactDomRoot {
   constructor(container: Container) {
     const root = createContainer(container, ConcurrentRoot)
     this._internalRoot = root
-    // const rootContainerElement =
-    //   container.nodeType === COMMENT_NODE ? container.parentNode : container
-    // listenToAllSupportedEvents(rootContainerElement)
+    const rootContainerElement: Node =
+      container.nodeType === COMMENT_NODE ? container.parentNode! : container
+
+    //在container上初始化事件系统
+    listenToAllSupportedEvents(rootContainerElement)
   }
 
   render(children: ReactNodeList) {
