@@ -8,6 +8,8 @@
 
 # production
 /build
+/public/*.js
+/public/*.map
 
 # misc
 .DS_Store

@@ -1,4 +1,4 @@
-import React from '../packages/react'
+import React, { useState } from '../packages/react'
 import { createRoot } from '../packages/react-dom'
 
 const Wrapper: React.FC<{
@@ -11,6 +11,7 @@ const Wrapper: React.FC<{
 )
 
 const App = () => {
+  const [num, setNum] = useState(3)
   return (
     <span
       // onClick={() => {
@@ -21,7 +22,7 @@ const App = () => {
         console.log('span capture')
       }}
     >
-      sdfsad
+      sdfsad-{num}
       {/* <Wrapper
         onClick={() => {
           console.log('wrapper bubble')

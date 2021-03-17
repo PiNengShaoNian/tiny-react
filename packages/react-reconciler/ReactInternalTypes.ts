@@ -101,3 +101,10 @@ export type Fiber = {
    */
   mode: TypeOfMode
 }
+
+type Dispatch<A> = (a: A) => void
+type BasicStateAction<S> = ((a: S) => S) | S
+
+export type Dispatcher = {
+  useState<S>(initialState: (() => S) | S): [S, Dispatch<BasicStateAction<S>>]
+}
