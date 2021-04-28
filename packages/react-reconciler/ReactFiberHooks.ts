@@ -1,5 +1,6 @@
 import { Dispatcher, Fiber } from './ReactInternalTypes'
 import { ReactSharedInternals } from '../shared/ReactSharedInternals'
+import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -10,6 +11,7 @@ export type Hook = {
   next: Hook | null
   memoizedState: any
   baseState: any
+  queue: UpdateQueue<any, any> | null
 }
 
 let workInProgressHook: Hook | null = null
@@ -20,6 +22,7 @@ const mountWorkInProgressHook = (): Hook => {
     next: null,
     memoizedState: null,
     baseState: null,
+    queue: null,
   }
 
   if (workInProgressHook === null) {
@@ -36,13 +39,43 @@ type Update<S, A> = {
   next: Update<S, A>
 }
 
-export type UpdateQueue<S, A> = {}
+export type UpdateQueue<S, A> = {
+  pending: Update<S, A> | null
+}
 
 const dispatchAction = <S, A>(
   fiber: Fiber,
   queue: UpdateQueue<S, A>,
   action: A
-) => {}
+) => {
+  const update: Update<S, A> = {
+    action,
+    next: null as any,
+  }
+
+  const alternate = fiber.alternate
+
+  if (
+    fiber === currentlyRenderingFiber ||
+    (alternate !== null && alternate === currentlyRenderingFiber)
+  ) {
+    //todo
+    throw new Error('Not Implement')
+  } else {
+    const pending = queue.pending
+
+    if (pending === null) {
+      update.next = update
+    } else {
+      update.next = pending.next
+      pending.next = update
+    }
+
+    queue.pending = update
+  }
+
+  scheduleUpdateOnFiber(fiber)
+}
 
 const mountState = <S>(
   initialState: (() => S) | S
@@ -55,7 +88,9 @@ const mountState = <S>(
 
   hook.memoizedState = hook.baseState = initialState
 
-  const queue = {}
+  const queue = (hook.queue = {
+    pending: null,
+  })
 
   const dispatch: Dispatch<BasicStateAction<S>> = dispatchAction.bind(
     null,
@@ -84,6 +119,8 @@ export const renderWithHooks = <Props, SecondArg>(
       : null
   //调用函数组件，获取JSX对象
   let children = Component(props, secondArg)
+
+  currentlyRenderingFiber = null as any
 
   return children
 }

@@ -2945,7 +2945,8 @@
 	  var hook = {
 	    next: null,
 	    memoizedState: null,
-	    baseState: null
+	    baseState: null,
+	    queue: null
 	  };
 
 	  if (workInProgressHook === null) {
@@ -2957,7 +2958,31 @@
 	  return workInProgressHook;
 	};
 
-	var dispatchAction = function dispatchAction(fiber, queue, action) {};
+	var dispatchAction = function dispatchAction(fiber, queue, action) {
+	  var update = {
+	    action: action,
+	    next: null
+	  };
+	  var alternate = fiber.alternate;
+
+	  if (fiber === currentlyRenderingFiber || alternate !== null && alternate === currentlyRenderingFiber) {
+	    //todo
+	    throw new Error('Not Implement');
+	  } else {
+	    var pending = queue.pending;
+
+	    if (pending === null) {
+	      update.next = update;
+	    } else {
+	      update.next = pending.next;
+	      pending.next = update;
+	    }
+
+	    queue.pending = update;
+	  }
+
+	  scheduleUpdateOnFiber(fiber);
+	};
 
 	var mountState = function mountState(initialState) {
 	  var hook = mountWorkInProgressHook();
@@ -2967,7 +2992,9 @@
 	  }
 
 	  hook.memoizedState = hook.baseState = initialState;
-	  var queue = {};
+	  var queue = hook.queue = {
+	    pending: null
+	  };
 
 	  var dispatch = bind$2(dispatchAction).call(dispatchAction, null, currentlyRenderingFiber, queue);
 
@@ -2982,6 +3009,7 @@
 	  ReactCurrentDispatcher$1.current = current === null || current.memoizedState === null ? HooksDispatcherOnMount : null; //调用函数组件，获取JSX对象
 
 	  var children = Component(props, secondArg);
+	  currentlyRenderingFiber = null;
 	  return children;
 	};
 
@@ -3574,13 +3602,25 @@
 
 	  var root = node.stateNode;
 	  performSyncWorkOnRoot(root);
+
 	  return root;
 	};
 	var discreteUpdates$1 = function discreteUpdates(fn, a, b, c, d) {
 	  return fn(a, b, c, d);
 	};
+	/**
+	 * 将要执行的函数放入BatchedContext上下文下，此后在函数内创建的所有的更新指挥出发一次reconcil
+	 * @param fn 要执行的函数
+	 * @param a
+	 * @returns
+	 */
+
 	var batchedEventUpdates$1 = function batchedEventUpdates(fn, a) {
-	  return fn(a);
+
+	  try {
+	    return fn(a);
+	  } finally {
+	  }
 	};
 
 	/**
@@ -4459,8 +4499,7 @@
 	    //   console.log('span bubble')
 	    // }}
 	    onClickCapture: function onClickCapture() {
-	      debugger;
-	      console.log('span capture');
+	      setNum(4);
 	    }
 	  }, "sdfsad-", num);
 	};

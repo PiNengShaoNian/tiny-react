@@ -10,6 +10,13 @@ import { MutationMask, NoFlags } from './ReactFiberFlags'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { HostRoot } from './ReactWorkTags'
 
+type ExecutionContext = number
+export const NoContext = /*             */ 0b000000
+const BatchedContext = /*               */ 0b000001
+const LegacyUnbatchedContext = /*       */ 0b000100
+
+let executionContext: ExecutionContext = NoContext
+
 /**
  * 当前在构建应用的root
  */
@@ -155,8 +162,10 @@ export const scheduleUpdateOnFiber = (fiber: Fiber): FiberRoot | null => {
   }
 
   const root = node.stateNode
-
   performSyncWorkOnRoot(root)
+  if ((executionContext & LegacyUnbatchedContext) !== NoContext) {
+  } else {
+  }
 
   return root
 }
@@ -171,6 +180,18 @@ export const discreteUpdates = <A, B, C, D, R>(
   return fn(a, b, c, d)
 }
 
+/**
+ * 将要执行的函数放入BatchedContext上下文下，此后在函数内创建的所有的更新指挥出发一次reconcil
+ * @param fn 要执行的函数
+ * @param a
+ * @returns
+ */
 export const batchedEventUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
-  return fn(a)
+  const prevExecutionContext = executionContext
+  executionContext |= BatchedContext
+  try {
+    return fn(a)
+  } finally {
+    executionContext = prevExecutionContext
+  }
 }

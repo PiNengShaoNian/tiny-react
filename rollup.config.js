@@ -6,8 +6,7 @@ import html from '@rollup/plugin-html'
 import { terser } from 'rollup-plugin-terser'
 import serve from 'rollup-plugin-serve'
 import livereload from 'rollup-plugin-livereload'
-import sourcemaps from 'rollup-plugin-sourcemaps';
-
+import sourcemaps from 'rollup-plugin-sourcemaps'
 
 const isProd = process.env.NODE_ENV === 'development'
 const extensions = ['.js', '.ts', '.tsx']
@@ -17,13 +16,14 @@ export default {
   output: {
     file: 'public/index.js',
     format: 'iife',
-    sourcemap: true
+    sourcemap: true,
   },
   plugins: [
     replace({
       'process.env.NODE_ENV': JSON.stringify(
         isProd ? 'production' : 'development'
       ),
+      preventAssignment: true,
     }),
     sourcemaps(),
     resolve({

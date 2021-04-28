@@ -18,19 +18,10 @@ const App = () => {
       //   console.log('span bubble')
       // }}
       onClickCapture={() => {
-        debugger
-        console.log('span capture')
+        setNum(4)
       }}
     >
       sdfsad-{num}
-      {/* <Wrapper
-        onClick={() => {
-          console.log('wrapper bubble')
-        }}
-        onClickCapture={() => {
-          console.log('wrapper capture')
-        }}
-      /> */}
     </span>
   )
 }
