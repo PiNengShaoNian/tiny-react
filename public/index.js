@@ -2138,6 +2138,7 @@
 	/**
 	 * 通过React.render调用时创建的FiberRoot为该值
 	 */
+	var LegacyRoot = 0;
 	/**
 	 * 通过React.createRoot调用时创建的FiberRoot为该值
 	 */
@@ -4455,8 +4456,17 @@
 	  }, null);
 	};
 
+	var _context$2;
+
+	var randomKey$1 = slice$4(_context$2 = Math.random().toString(36)).call(_context$2, 2);
+
+	var internalContainerInstanceKey = '__reactContainer$' + randomKey$1;
+	var markContainerAsRoot = function markContainerAsRoot(hostRoot, node) {
+	  node[internalContainerInstanceKey] = hostRoot;
+	};
+
 	/**
-	 * createRoot创建节点是使用的类（ConcurrentRoot）
+	 * createRoot创建节点时使用的类（ConcurrentRoot）
 	 */
 	var ReactDomRoot = /*#__PURE__*/function () {
 	  function ReactDomRoot(container) {
@@ -4464,26 +4474,60 @@
 
 	    _defineProperty(this, "_internalRoot", void 0);
 
-	    var root = createContainer(container, ConcurrentRoot);
-	    this._internalRoot = root;
-	    var rootContainerElement = container.nodeType === COMMENT_NODE ? container.parentNode : container; //在container上初始化事件系统
-
-	    listenToAllSupportedEvents(rootContainerElement);
+	    this._internalRoot = createRootImpl(container, ConcurrentRoot);
 	  }
 
 	  _createClass(ReactDomRoot, [{
 	    key: "render",
-	    value: function render(children) {
-	      var root = this._internalRoot;
-	      updateContainer(children, root);
-	    }
+	    value: function render(children) {}
+	  }, {
+	    key: "unmount",
+	    value: function unmount() {}
 	  }]);
 
 	  return ReactDomRoot;
 	}();
+	/**
+	 * ReactDOM.render创建FiberRoot的时使用的类
+	 */
+
+
+	var ReactDOMLegacyRoot = /*#__PURE__*/function () {
+	  function ReactDOMLegacyRoot(container) {
+	    _classCallCheck(this, ReactDOMLegacyRoot);
+
+	    _defineProperty(this, "_internalRoot", void 0);
+
+	    this._internalRoot = createRootImpl(container, LegacyRoot);
+	  }
+
+	  _createClass(ReactDOMLegacyRoot, [{
+	    key: "unmount",
+	    value: function unmount() {}
+	  }, {
+	    key: "render",
+	    value: function render(children) {}
+	  }]);
+
+	  return ReactDOMLegacyRoot;
+	}();
+
+	ReactDomRoot.prototype.render = ReactDOMLegacyRoot.prototype.render = function (children) {
+	  var root = this._internalRoot;
+	  updateContainer(children, root);
+	};
 
 	var createRoot = function createRoot(container) {
 	  return new ReactDomRoot(container);
+	};
+
+	var createRootImpl = function createRootImpl(container, tag) {
+	  var root = createContainer(container, tag);
+	  markContainerAsRoot(root.current, container);
+	  var rootContainerElement = container.nodeType === COMMENT_NODE ? container.parentNode : container; //在container上初始化事件系统
+
+	  listenToAllSupportedEvents(rootContainerElement);
+	  return root;
 	};
 
 	setBatchingImplementation(discreteUpdates$1, batchedEventUpdates$1);

@@ -195,3 +195,15 @@ export const batchedEventUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
     executionContext = prevExecutionContext
   }
 }
+
+export const unbatchedUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
+  const prevExecutionContext = executionContext
+  executionContext &= ~BatchedContext
+  executionContext |= LegacyUnbatchedContext
+
+  try {
+    return fn(a)
+  } finally {
+    executionContext = prevExecutionContext
+  }
+}
