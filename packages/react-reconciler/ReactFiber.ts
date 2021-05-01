@@ -15,6 +15,7 @@ import {
   TypeOfMode,
 } from './ReactTypeOfMode'
 import { Flags } from './ReactFiberFlags'
+import { NoLanes } from './ReactFiberLane'
 
 class FiberNode {
   stateNode: any = null
@@ -30,6 +31,7 @@ class FiberNode {
   subtreeFlags: Flags = 0
   deletions: Fiber[] | null = null
   index: number = 0
+  lanes = NoLanes
 
   constructor(
     public tag: WorkTag,

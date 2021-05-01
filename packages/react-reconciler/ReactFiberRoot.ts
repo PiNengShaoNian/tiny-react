@@ -1,9 +1,18 @@
 import { createHostRootFiber } from './ReactFiber'
+import { createLaneMap, NoLane, NoLanes, NoTimestamp } from './ReactFiberLane'
 import { FiberRoot } from './ReactInternalTypes'
 import { RootTag } from './ReactRootTags'
 import { initializeUpdateQueue } from './ReactUpdateQueue'
 
 class FiberRootNode {
+  callbackNode = null
+  pendingLanes = NoLanes
+  expiredLanes = NoLanes
+  finishedWork = null
+  current = null as any
+  eventTimes = createLaneMap(NoLanes)
+  expirationTimes = createLaneMap(NoTimestamp)
+  callbackPriority = NoLane
   constructor(public containerInfo: any, public tag: RootTag) {}
 }
 
@@ -17,7 +26,7 @@ export const createFiberRoot = (
   containerInfo: any,
   tag: RootTag
 ): FiberRoot => {
-  const root: FiberRoot = new FiberRootNode(containerInfo, tag) as any
+  const root: FiberRoot = new FiberRootNode(containerInfo, tag)
 
   const uninitializedFiber = createHostRootFiber(tag)
   root.current = uninitializedFiber

@@ -1,7 +1,11 @@
 import { Container } from '../react-dom/ReactDomRoot'
 import { ReactNodeList } from '../shared/ReactTypes'
 import { createFiberRoot } from './ReactFiberRoot'
-import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import {
+  requestEventTime,
+  requestUpdateLane,
+  scheduleUpdateOnFiber,
+} from './ReactFiberWorkLoop'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { RootTag } from './ReactRootTags'
 import { createUpdate, enqueueUpdate } from './ReactUpdateQueue'
@@ -30,13 +34,14 @@ export const updateContainer = (
   container: FiberRoot
 ) => {
   const current: Fiber = container.current
-
+  const eventTime = requestEventTime()
+  const lane = requestUpdateLane(current)
   const update = createUpdate()
 
   update.payload = { element }
   enqueueUpdate(current, update)
 
-  scheduleUpdateOnFiber(current)
+  scheduleUpdateOnFiber(current, lane, eventTime)
 }
 
 export { discreteUpdates, batchedEventUpdates }

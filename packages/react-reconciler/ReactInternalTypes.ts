@@ -1,4 +1,6 @@
 import { Flags } from './ReactFiberFlags'
+import { Lane, LaneMap, Lanes } from './ReactFiberLane'
+import { RootTag } from './ReactRootTags'
 import { TypeOfMode } from './ReactTypeOfMode'
 import { WorkTag } from './ReactWorkTags'
 
@@ -20,6 +22,22 @@ export type FiberRoot = {
    * 在concurrent模式中为createRoot的参数
    */
   containerInfo: any
+
+  /**
+   * Scheduler.scheduleCallback的返回值，代表了下次执行render的task
+   */
+  callbackNode: unknown
+  callbackPriority: Lane
+
+  pendingLanes: Lanes
+  expiredLanes: Lanes
+  expirationTimes: LaneMap<number>
+  eventTimes: LaneMap<number>
+
+  /**
+   * root的类型(legacy, batched,concurrent等)
+   */
+  tag: RootTag
 }
 
 export type Fiber = {
@@ -100,6 +118,15 @@ export type Fiber = {
    * 当以createRoot创建时mode为ConcurrentMode
    */
   mode: TypeOfMode
+
+  /**
+   * 用来判断该Fiber节点是否存在更新，以及改更新的优先级
+   */
+  lanes: Lanes
+  /**
+   * 用来判断该节点的子节点是否存在更新
+   */
+  childLanes: Lanes
 }
 
 type Dispatch<A> = (a: A) => void

@@ -4,7 +4,8 @@ import {
   discreteUpdates,
   batchedEventUpdates,
 } from '../react-reconciler/ReactFiberReconciler'
+import { render } from './ReactDOMLegacy'
 
 setBatchingImplementation(discreteUpdates, batchedEventUpdates)
 
-export { createRoot }
+export { createRoot, render }

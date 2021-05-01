@@ -1,5 +1,5 @@
 import React, { useState } from '../packages/react'
-import { createRoot } from '../packages/react-dom'
+import { createRoot, render } from '../packages/react-dom'
 
 const Wrapper: React.FC<{
   onClick: () => void
@@ -26,6 +26,7 @@ const App = () => {
   )
 }
 
-createRoot(document.querySelector('#app')!).render(<App />)
+// createRoot(document.querySelector('#app')!).render(<App />)
 
+render(<App />, document.querySelector('#app')!)
 // ReactDom.render(<App />, document.querySelector('#app')!)

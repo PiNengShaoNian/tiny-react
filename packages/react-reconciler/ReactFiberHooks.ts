@@ -1,6 +1,11 @@
 import { Dispatcher, Fiber } from './ReactInternalTypes'
 import { ReactSharedInternals } from '../shared/ReactSharedInternals'
-import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import {
+  requestEventTime,
+  requestUpdateLane,
+  scheduleUpdateOnFiber,
+} from './ReactFiberWorkLoop'
+import { NoLanes } from './ReactFiberLane'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -41,6 +46,8 @@ type Update<S, A> = {
 
 export type UpdateQueue<S, A> = {
   pending: Update<S, A> | null
+  lastRenderedReducer: ((s: S, a: A) => S) | null
+  lastRenderedState: S | null
 }
 
 const dispatchAction = <S, A>(
@@ -54,6 +61,8 @@ const dispatchAction = <S, A>(
   }
 
   const alternate = fiber.alternate
+  const lane = requestUpdateLane(fiber)
+  const eventTime = requestEventTime()
 
   if (
     fiber === currentlyRenderingFiber ||
@@ -72,9 +81,32 @@ const dispatchAction = <S, A>(
     }
 
     queue.pending = update
-  }
 
-  scheduleUpdateOnFiber(fiber)
+    if (
+      fiber.lanes === NoLanes &&
+      (alternate === null || alternate.lanes === NoLanes)
+    ) {
+      const lastRenderedReducer = queue.lastRenderedReducer
+
+      if (lastRenderedReducer !== null) {
+        try {
+          const currentState: S = queue.lastRenderedState as any
+          const eagerState = lastRenderedReducer(currentState, action)
+          if (Object.is(eagerState, currentState)) {
+            return
+          }
+        } catch (error) {
+          // 捕获改异常，他待会还会再render阶段抛出
+        }
+      }
+    }
+
+    scheduleUpdateOnFiber(fiber, lane, eventTime)
+  }
+}
+
+const basicStateReducer = <S>(state: S, action: BasicStateAction<S>): S => {
+  return typeof action === 'function' ? (action as (s: S) => S)(state) : action
 }
 
 const mountState = <S>(
@@ -90,6 +122,8 @@ const mountState = <S>(
 
   const queue = (hook.queue = {
     pending: null,
+    lastRenderedReducer: basicStateReducer,
+    lastRenderedState: initialState,
   })
 
   const dispatch: Dispatch<BasicStateAction<S>> = dispatchAction.bind(

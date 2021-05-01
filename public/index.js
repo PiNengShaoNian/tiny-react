@@ -2179,6 +2179,126 @@
 	/*    */
 	2;
 
+	var floor$1 = Math.floor;
+	var log = Math.log;
+	var LOG2E = Math.LOG2E;
+
+	// `Math.clz32` method
+	// https://tc39.es/ecma262/#sec-math.clz32
+	_export({ target: 'Math', stat: true }, {
+	  clz32: function clz32(x) {
+	    return (x >>>= 0) ? 31 - floor$1(log(x + 0.5) * LOG2E) : 32;
+	  }
+	});
+
+	var clz32 = path.Math.clz32;
+
+	var clz32$1 = clz32;
+
+	var clz32$2 = clz32$1;
+
+	var TotalLanes = 31;
+	var NoLanes =
+	/*                          */
+	0;
+	var NoLane =
+	/*                          */
+	0;
+	var SyncLane =
+	/*                        */
+	1;
+	var NonIdleLanes =
+	/*                                 */
+	268435455;
+	var NoTimestamp = -1;
+	var clz32$3 = clz32$2;
+
+	var pickArbitraryLaneIndex = function pickArbitraryLaneIndex(lanes) {
+	  return 31 - clz32$3(lanes);
+	};
+	var getHighestPriorityLane = function getHighestPriorityLane(lanes) {
+	  return lanes & -lanes;
+	};
+
+	var getHighestPriorityLanes = function getHighestPriorityLanes(lanes) {
+	  switch (getHighestPriorityLane(lanes)) {
+	    case SyncLane:
+	      return SyncLane;
+
+	    default:
+	      {
+	        throw new Error('Not Implement');
+	      }
+	  }
+	};
+	/**
+	 * 根据当前root的lanes和workInProgressLanes返回这侧执行任务的lanes
+	 * @param root
+	 * @param wipLanes
+	 * @returns
+	 */
+
+
+	var getNextLanes = function getNextLanes(root, wipLanes) {
+	  var pendingLanes = root.pendingLanes; //提前退出，如果没有待进行的工作
+
+	  if (pendingLanes === NoLanes) return NoLanes;
+	  var nextLanes = NoLanes;
+	  var nonIdlePendingLanes = pendingLanes & NonIdleLanes;
+
+	  if (nonIdlePendingLanes !== NoLanes) {
+	    nextLanes = getHighestPriorityLanes(nonIdlePendingLanes);
+	  } else {
+	    throw new Error('Not Implement');
+	  }
+
+	  if (nextLanes === NoLanes) {
+	    return NoLanes;
+	  }
+	  /**
+	   * 如果已经处于render阶段，切换lanes会导致丢失进度
+	   * 我们只因该在新的lane拥有更高的优先级的时候这样做
+	   */
+
+
+	  if (wipLanes !== NoLanes && wipLanes !== nextLanes) {
+	    var nextLane = getHighestPriorityLane(nextLanes);
+	    var wipLane = getHighestPriorityLane(wipLanes);
+
+	    if (nextLane >= wipLane) {
+	      return wipLanes;
+	    }
+	  }
+
+	  return nextLanes;
+	};
+	var includesSomeLane = function includesSomeLane(a, b) {
+	  return (a | b) !== NoLanes;
+	};
+	var mergeLanes = function mergeLanes(a, b) {
+	  return a | b;
+	};
+
+	var laneToIndex = function laneToIndex(lane) {
+	  return pickArbitraryLaneIndex(lane);
+	};
+
+	var markRootUpdated = function markRootUpdated(root, updateLane, eventTime) {
+	  root.pendingLanes |= updateLane;
+	  var eventTimes = root.eventTimes;
+	  var index = laneToIndex(updateLane);
+	  eventTimes[index] = eventTime;
+	};
+	var createLaneMap = function createLaneMap(initial) {
+	  var laneMap = [];
+
+	  for (var i = 0; i < TotalLanes; ++i) {
+	    laneMap.push(initial);
+	  }
+
+	  return laneMap;
+	};
+
 	var FiberNode = function FiberNode(tag, pendingProps, key, mode) {
 	  _classCallCheck(this, FiberNode);
 
@@ -2212,6 +2332,8 @@
 	  _defineProperty(this, "deletions", null);
 
 	  _defineProperty(this, "index", 0);
+
+	  _defineProperty(this, "lanes", NoLanes);
 	};
 	/**
 	 *
@@ -2528,6 +2650,22 @@
 
 	  this.containerInfo = containerInfo;
 	  this.tag = tag;
+
+	  _defineProperty(this, "callbackNode", null);
+
+	  _defineProperty(this, "pendingLanes", NoLanes);
+
+	  _defineProperty(this, "expiredLanes", NoLanes);
+
+	  _defineProperty(this, "finishedWork", null);
+
+	  _defineProperty(this, "current", null);
+
+	  _defineProperty(this, "eventTimes", createLaneMap(NoLanes));
+
+	  _defineProperty(this, "expirationTimes", createLaneMap(NoTimestamp));
+
+	  _defineProperty(this, "callbackPriority", NoLane);
 	};
 	/**
 	 *
@@ -2895,6 +3033,25 @@
 	var mountChildFibers = ChildReconciler(false);
 	var reconcileChildFibers = ChildReconciler(true);
 
+	// `SameValue` abstract operation
+	// https://tc39.es/ecma262/#sec-samevalue
+	var sameValue = Object.is || function is(x, y) {
+	  // eslint-disable-next-line no-self-compare -- NaN check
+	  return x === y ? x !== 0 || 1 / x === 1 / y : x != x && y != y;
+	};
+
+	// `Object.is` method
+	// https://tc39.es/ecma262/#sec-object.is
+	_export({ target: 'Object', stat: true }, {
+	  is: sameValue
+	});
+
+	var is = path.Object.is;
+
+	var is$1 = is;
+
+	var is$2 = is$1;
+
 	var slice$5 = [].slice;
 	var factories = {};
 
@@ -2965,6 +3122,8 @@
 	    next: null
 	  };
 	  var alternate = fiber.alternate;
+	  var lane = requestUpdateLane(fiber);
+	  var eventTime = requestEventTime();
 
 	  if (fiber === currentlyRenderingFiber || alternate !== null && alternate === currentlyRenderingFiber) {
 	    //todo
@@ -2980,9 +3139,29 @@
 	    }
 
 	    queue.pending = update;
-	  }
 
-	  scheduleUpdateOnFiber(fiber);
+	    if (fiber.lanes === NoLanes && (alternate === null || alternate.lanes === NoLanes)) {
+	      var lastRenderedReducer = queue.lastRenderedReducer;
+
+	      if (lastRenderedReducer !== null) {
+	        try {
+	          var currentState = queue.lastRenderedState;
+	          var eagerState = lastRenderedReducer(currentState, action);
+
+	          if (is$2(eagerState, currentState)) {
+	            return;
+	          }
+	        } catch (error) {// 捕获改异常，他待会还会再render阶段抛出
+	        }
+	      }
+	    }
+
+	    scheduleUpdateOnFiber(fiber, lane, eventTime);
+	  }
+	};
+
+	var basicStateReducer = function basicStateReducer(state, action) {
+	  return typeof action === 'function' ? action(state) : action;
 	};
 
 	var mountState = function mountState(initialState) {
@@ -2994,7 +3173,9 @@
 
 	  hook.memoizedState = hook.baseState = initialState;
 	  var queue = hook.queue = {
-	    pending: null
+	    pending: null,
+	    lastRenderedReducer: basicStateReducer,
+	    lastRenderedState: initialState
 	  };
 
 	  var dispatch = bind$2(dispatchAction).call(dispatchAction, null, currentlyRenderingFiber, queue);
@@ -3475,6 +3656,28 @@
 	  throw new Error('Not implement');
 	};
 
+	var getCurrentTime = function getCurrentTime() {
+	  return performance.now();
+	};
+
+	var now = getCurrentTime;
+
+	var NoContext =
+	/*             */
+	0;
+	var BatchedContext =
+	/*               */
+	1;
+	var LegacyUnbatchedContext =
+	/*       */
+	4;
+	var RenderContext =
+	/*                */
+	8;
+	var CommitContext =
+	/*                */
+	16;
+	var executionContext = NoContext;
 	/**
 	 * 当前在构建应用的root
 	 */
@@ -3485,6 +3688,7 @@
 	 */
 
 	var workInProgress = null;
+	var currentEventTime = NoTimestamp;
 
 	var completeUnitOfWork = function completeUnitOfWork(unitOfWork) {
 	  var completedWork = unitOfWork;
@@ -3531,14 +3735,17 @@
 	 */
 
 
-	var prepareFreshStack = function prepareFreshStack(root) {
+	var prepareFreshStack = function prepareFreshStack(root, lanes) {
 	  workInProgressRoot = root; //创建workInProgress的HostRoot其props为null
 
 	  workInProgress = createWorkInProgress(root.current, null);
 	};
 
-	var renderRootSync = function renderRootSync(root) {
+	var renderRootSync = function renderRootSync(root, lanes) {
 	  //如果根节点改变调用prepareFreshStack重置参数
+	  var prevExecutionContext = executionContext;
+	  executionContext |= RenderContext;
+
 	  if (workInProgressRoot !== root) {
 	    prepareFreshStack(root);
 	  }
@@ -3546,6 +3753,13 @@
 	  while (workInProgress !== null) {
 	    performUnitOfWork(workInProgress);
 	  }
+
+	  executionContext = prevExecutionContext;
+	  /**
+	   * 把它设置为null表示当前没有进行中的render
+	   */
+
+	  workInProgressRoot = null;
 	};
 
 	var commitRootImpl = function commitRootImpl(root) {
@@ -3573,12 +3787,63 @@
 	  commitRootImpl(root);
 	  return null;
 	};
+	/**
+	 * 这个是不通过Scheduler调度的同步任务的入口
+	 * @param root
+	 */
+
 
 	var performSyncWorkOnRoot = function performSyncWorkOnRoot(root) {
+	  var lanes = getNextLanes(root, NoLanes);
+	  if (!includesSomeLane(lanes, SyncLane)) return null;
 	  var exitStatus = renderRootSync(root);
 	  var finishedWork = root.current.alternate;
 	  root.finishedWork = finishedWork;
 	  commitRoot(root);
+	};
+
+	var markUpdateLaneFromFiberToRoot = function markUpdateLaneFromFiberToRoot(sourceFiber, lane) {
+	  sourceFiber.lanes = mergeLanes(sourceFiber.lanes, lane);
+	  var alternate = sourceFiber.alternate;
+
+	  if (alternate !== null) {
+	    alternate.lanes = mergeLanes(alternate.lanes, lane);
+	  }
+
+	  var node = sourceFiber;
+	  var parent = sourceFiber["return"];
+
+	  while (parent !== null) {
+	    parent.childLanes = mergeLanes(parent.childLanes, lane);
+	    alternate = parent.alternate;
+
+	    if (alternate !== null) {
+	      alternate.childLanes = mergeLanes(alternate.childLanes, lane);
+	    }
+
+	    node = parent;
+	    parent = node["return"];
+	  }
+
+	  if (node.tag === HostRoot) {
+	    var root = node.stateNode;
+	    return root;
+	  } else {
+	    return null;
+	  }
+	};
+
+	var requestEventTime = function requestEventTime() {
+	  if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
+	    return now();
+	  }
+
+	  if (currentEventTime !== NoTimestamp) {
+	    return currentEventTime;
+	  }
+
+	  currentEventTime = now();
+	  return currentEventTime;
 	};
 	/**
 	 * 调度fiber节点上的更新
@@ -3587,22 +3852,33 @@
 	 * @returns 产生更新fiber树的FiberRoot(注意不是rootFiber)
 	 */
 
-	var scheduleUpdateOnFiber = function scheduleUpdateOnFiber(fiber) {
-	  var node = fiber;
-	  var parent = node["return"];
+	var scheduleUpdateOnFiber = function scheduleUpdateOnFiber(fiber, lane, eventTime) {
+	  var root = markUpdateLaneFromFiberToRoot(fiber, lane);
 
-	  while (parent) {
-	    //不断向上遍历，当node为HostRoot类型时会跳出循环
-	    node = parent;
-	    parent = parent["return"];
-	  }
-
-	  if (node.tag !== HostRoot) {
+	  if (root === null) {
 	    return null;
 	  }
 
-	  var root = node.stateNode;
-	  performSyncWorkOnRoot(root);
+	  markRootUpdated(root, lane, eventTime);
+
+	  if (root === workInProgressRoot) {
+	    throw new Error('Not Implement');
+	  }
+
+	  if (lane === SyncLane) {
+	    if ( //检查是是否该调用是否处于unbatchedUpdates中
+	    (executionContext & LegacyUnbatchedContext) !== NoContext && //检查是否以及处于渲染中
+	    (executionContext & (RenderContext | CommitContext)) === NoContext) {
+	      // 这个是一个遗留模式的情况，
+	      //首次调用ReactDOM.render时处于batchedUpdates中的逻辑因该是同步执行的
+	      //但是layout updates应该推迟到改batch的结尾
+	      performSyncWorkOnRoot(root);
+	    } else {
+	      throw new Error('Not Implement');
+	    }
+	  } else {
+	    throw new Error('Not Implement');
+	  }
 
 	  return root;
 	};
@@ -3617,11 +3893,45 @@
 	 */
 
 	var batchedEventUpdates$1 = function batchedEventUpdates(fn, a) {
+	  var prevExecutionContext = executionContext;
+	  executionContext |= BatchedContext;
 
 	  try {
 	    return fn(a);
 	  } finally {
+	    executionContext = prevExecutionContext;
 	  }
+	};
+	/**
+	 * 给执行上下文加上LegacyUnbatchedContext,等到scheduleUpdateOnFilber执行时
+	 * 就会跳转到performSyncWorkOnRoot逻辑
+	 * @param fn 要在该上下文中执行的操作要执行的操作
+	 * @param a
+	 * @returns
+	 */
+
+	var unbatchedUpdates = function unbatchedUpdates(fn, a) {
+	  var prevExecutionContext = executionContext;
+	  executionContext &= ~BatchedContext;
+	  executionContext |= LegacyUnbatchedContext;
+
+	  try {
+	    return fn(a);
+	  } finally {
+	    executionContext = prevExecutionContext;
+	  }
+	};
+	var requestUpdateLane = function requestUpdateLane(fiber) {
+	  var mode = fiber.mode;
+	  if ((mode & ConcurrentMode) === NoMode) return SyncLane;else if ((executionContext & RenderContext) !== NoContext) {
+	    throw new Error('Not Implement');
+	  }
+	  throw new Error('Not Implement'); // const updateLane: Lane = getCurrentUpdatePriority()
+	  // if (updateLane !== NoLane) {
+	  //   return updateLane
+	  // }
+	  // const eventLane: Lane = getCurrentEventPriority()
+	  // return eventLane
 	};
 
 	/**
@@ -3642,12 +3952,14 @@
 
 	var updateContainer = function updateContainer(element, container) {
 	  var current = container.current;
+	  var eventTime = requestEventTime();
+	  var lane = requestUpdateLane(current);
 	  var update = createUpdate();
 	  update.payload = {
 	    element: element
 	  };
 	  enqueueUpdate(current, update);
-	  scheduleUpdateOnFiber(current);
+	  scheduleUpdateOnFiber(current, lane, eventTime);
 	};
 
 	var freezing = !fails(function () {
@@ -4517,10 +4829,6 @@
 	  updateContainer(children, root);
 	};
 
-	var createRoot = function createRoot(container) {
-	  return new ReactDomRoot(container);
-	};
-
 	var createRootImpl = function createRootImpl(container, tag) {
 	  var root = createContainer(container, tag);
 	  markContainerAsRoot(root.current, container);
@@ -4528,6 +4836,39 @@
 
 	  listenToAllSupportedEvents(rootContainerElement);
 	  return root;
+	};
+
+	var createLegacyRoot = function createLegacyRoot(container) {
+	  return new ReactDOMLegacyRoot(container);
+	};
+
+	var legacyCreateRootFromDOMContainer = function legacyCreateRootFromDOMContainer(container) {
+	  return createLegacyRoot(container);
+	};
+
+	var legacyRenderSubtreeIntoContainer = function legacyRenderSubtreeIntoContainer(parentComponent, children, container, callback) {
+	  var _fiberRoot$current$ch3;
+
+	  var root = container._reactRootContainer;
+	  var fiberRoot;
+
+	  if (!root) {
+	    //首次挂载
+	    root = container._reactRootContainer = legacyCreateRootFromDOMContainer(container);
+	    fiberRoot = root._internalRoot;
+
+	    unbatchedUpdates(function () {
+	      updateContainer(children, fiberRoot);
+	    }, null);
+	  } else {
+	    throw new Error('Not Implement');
+	  }
+
+	  return (_fiberRoot$current$ch3 = fiberRoot.current.child) === null || _fiberRoot$current$ch3 === void 0 ? void 0 : _fiberRoot$current$ch3.stateNode;
+	};
+
+	var render = function render(element, container, callback) {
+	  return legacyRenderSubtreeIntoContainer(null, element, container);
 	};
 
 	setBatchingImplementation(discreteUpdates$1, batchedEventUpdates$1);
@@ -4546,9 +4887,10 @@
 	      setNum(4);
 	    }
 	  }, "sdfsad-", num);
-	};
+	}; // createRoot(document.querySelector('#app')!).render(<App />)
 
-	createRoot(document.querySelector('#app')).render( /*#__PURE__*/React.createElement(App, null)); // ReactDom.render(<App />, document.querySelector('#app')!)
+
+	render( /*#__PURE__*/React.createElement(App, null), document.querySelector('#app')); // ReactDom.render(<App />, document.querySelector('#app')!)
 
 }());
 //# sourceMappingURL=index.js.map
