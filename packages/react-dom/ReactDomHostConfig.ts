@@ -44,7 +44,7 @@ export const createInstance = (
 
   precacheFiberNode(internalInstanceHandle, domElement)
   updateFiberProps(domElement, props)
-  
+
   return domElement
 }
 
@@ -117,3 +117,5 @@ export const createTextInstance = (text: string): Text => {
 
   return instance
 }
+
+export const scheduleMicrotask = queueMicrotask

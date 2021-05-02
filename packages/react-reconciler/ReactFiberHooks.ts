@@ -5,7 +5,7 @@ import {
   requestUpdateLane,
   scheduleUpdateOnFiber,
 } from './ReactFiberWorkLoop'
-import { NoLanes } from './ReactFiberLane'
+import { Lanes, NoLanes } from './ReactFiberLane'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -21,6 +21,7 @@ export type Hook = {
 
 let workInProgressHook: Hook | null = null
 let currentlyRenderingFiber: Fiber
+let currentHook: Hook | null = null
 
 const mountWorkInProgressHook = (): Hook => {
   const hook: Hook = {
@@ -31,7 +32,7 @@ const mountWorkInProgressHook = (): Hook => {
   }
 
   if (workInProgressHook === null) {
-    workInProgressHook = hook
+    currentlyRenderingFiber.memoizedState = workInProgressHook = hook
   } else {
     workInProgressHook = workInProgressHook.next = hook
   }
@@ -135,8 +136,71 @@ const mountState = <S>(
   return [hook.memoizedState, dispatch]
 }
 
+const updateWorkInProgressHook = (): Hook => {
+  let nextCurrentHook: null | Hook
+
+  if (currentHook === null) {
+    const current = currentlyRenderingFiber.alternate
+    if (current !== null) {
+      nextCurrentHook = current.memoizedState
+    } else {
+      nextCurrentHook = null
+    }
+  } else {
+    nextCurrentHook = currentHook.next
+  }
+
+  let nextWorkInProgressHook: Hook | null
+
+  if (workInProgressHook === null) {
+    nextWorkInProgressHook = currentlyRenderingFiber.memoizedState
+  } else {
+    nextWorkInProgressHook = workInProgressHook.next
+  }
+
+  if (nextWorkInProgressHook !== null) {
+    workInProgressHook = nextWorkInProgressHook
+    nextWorkInProgressHook = workInProgressHook.next
+    currentHook = nextCurrentHook
+  } else {
+    currentHook = nextCurrentHook!
+    const newHook: Hook = {
+      memoizedState: currentHook.memoizedState,
+      baseState: currentHook.baseState,
+      queue: currentHook.queue,
+      next: null,
+    }
+
+    if (workInProgressHook === null) {
+      currentlyRenderingFiber.memoizedState = workInProgressHook = newHook
+    } else {
+      workInProgressHook = workInProgressHook.next = newHook
+    }
+  }
+
+  return workInProgressHook
+}
+
+const updateReducer = <S, I, A>(
+  reducer: (s: S, a: A) => S,
+  initialArg: I,
+  init?: (i: I) => S
+) => {
+  const hook = updateWorkInProgressHook
+}
+
+const updateState = <S>(
+  initialState: (() => S) | S
+): [S, Dispatch<BasicStateAction<S>>] => {
+  return updateReducer()
+}
+
 const HooksDispatcherOnMount: Dispatcher = {
   useState: mountState,
+}
+
+const HooksDispatcherOnUpdate: Dispatcher = {
+  useState: updateState,
 }
 
 export const renderWithHooks = <Props, SecondArg>(
@@ -144,7 +208,8 @@ export const renderWithHooks = <Props, SecondArg>(
   workInProgress: Fiber,
   Component: (p: Props, arg: SecondArg) => any,
   props: Props,
-  secondArg: SecondArg
+  secondArg: SecondArg,
+  nextRenderLanes: Lanes
 ) => {
   currentlyRenderingFiber = workInProgress
   ReactCurrentDispatcher.current =

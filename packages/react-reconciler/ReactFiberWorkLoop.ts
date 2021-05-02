@@ -1,3 +1,4 @@
+import { scheduleMicrotask } from './ReactFiberHostConfig'
 import { getCurrentUpdatePriority } from './ReactEventPriorities'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
@@ -22,6 +23,10 @@ import {
   NoTimestamp,
   SyncLane,
 } from './ReactFiberLane'
+import {
+  flushSyncCallbacks,
+  scheduleLegacySyncCallback,
+} from './ReactFiberSyncTaskQueue'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { LegacyRoot } from './ReactRootTags'
 import { ConcurrentMode, NoMode } from './ReactTypeOfMode'
@@ -53,6 +58,8 @@ let workInProgress: Fiber | null = null
 let workInProgressRootRenderLanes: Lanes = NoLanes
 
 let currentEventTime: number = NoTimestamp
+
+export let subtreeRenderLanes: Lanes = NoLanes
 
 const completeUnitOfWork = (unitOfWork: Fiber): void => {
   let completedWork: Fiber | null = unitOfWork
@@ -90,7 +97,7 @@ const performUnitOfWork = (unitOfWork: Fiber): void => {
   let next: Fiber | null = null
 
   //创建或者reconcile unitOfWork.child并将其返回
-  next = beginWork(current, unitOfWork)
+  next = beginWork(current, unitOfWork, subtreeRenderLanes)
 
   //进行的时前序遍历，next为null说明该节点没有子节点了，对其进行归过程
   if (next === null) {
@@ -110,7 +117,7 @@ const prepareFreshStack = (root: FiberRoot, lanes: Lanes) => {
   workInProgressRoot = root
   //创建workInProgress的HostRoot其props为null
   workInProgress = createWorkInProgress(root.current, null)
-  workInProgressRootRenderLanes = lanes
+  workInProgressRootRenderLanes = subtreeRenderLanes = lanes
 }
 
 const renderRootSync = (root: FiberRoot, lanes: Lanes) => {
@@ -186,6 +193,8 @@ export const performSyncWorkOnRoot = (root: FiberRoot) => {
   root.finishedWork = finishedWork
 
   commitRoot(root)
+
+  return null
 }
 
 const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
@@ -227,9 +236,16 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
   //调度一个新回调
   let newCallbackNode
   if (newCallbackPriority === SyncLane) {
-    throw new Error('Not Implement')
     if (root.tag === LegacyRoot) {
+      scheduleLegacySyncCallback(performSyncWorkOnRoot.bind(null, root))
+    } else {
+      throw new Error('Not Implement')
     }
+
+    scheduleMicrotask(flushSyncCallbacks)
+    newCallbackNode = null
+  } else {
+    throw new Error('Not Implement')
   }
 }
 
@@ -315,7 +331,8 @@ export const scheduleUpdateOnFiber = (
       //但是layout updates应该推迟到改batch的结尾
       performSyncWorkOnRoot(root)
     } else {
-      throw new Error('Not Implement')
+      ensureRootIsScheduled(root, eventTime)
+      // throw new Error('Not Implement')
     }
   } else {
     throw new Error('Not Implement')

@@ -15,7 +15,7 @@ import {
   TypeOfMode,
 } from './ReactTypeOfMode'
 import { Flags } from './ReactFiberFlags'
-import { NoLanes } from './ReactFiberLane'
+import { Lanes, NoLanes } from './ReactFiberLane'
 
 class FiberNode {
   stateNode: any = null
@@ -32,6 +32,7 @@ class FiberNode {
   deletions: Fiber[] | null = null
   index: number = 0
   lanes = NoLanes
+  childLanes = NoLanes
 
   constructor(
     public tag: WorkTag,
@@ -86,13 +87,20 @@ export const createWorkInProgress = (
       current.mode
     )
 
+    workInProgress.type = current.type
     workInProgress.stateNode = current.stateNode
 
     workInProgress.alternate = current
     current.alternate = workInProgress
   }
 
+  workInProgress.lanes = current.lanes
   workInProgress.updateQueue = current.updateQueue
+  // workInProgress.childLanes = current.childLanes
+  // workInProgress.flags = current.flags
+  workInProgress.child = current.child
+  // workInProgress.memoizedProps = current.memoizedProps
+  // workInProgress.memoizedState = current.memoizedState
 
   return workInProgress
 }
@@ -101,7 +109,8 @@ export const createFiberFromTypeAndProps = (
   type: any,
   key: null | string,
   pendingProps: any,
-  mode: TypeOfMode
+  mode: TypeOfMode,
+  lanes: Lanes
 ) => {
   let fiberTag: WorkTag = IndeterminateComponent
 
@@ -112,18 +121,26 @@ export const createFiberFromTypeAndProps = (
 
   const fiber = createFiber(fiberTag, pendingProps, key, mode)
   fiber.type = type
+  fiber.lanes = lanes
   return fiber
 }
 
 export const createFiberFromElement = (
   element: ReactElement,
-  mode: TypeOfMode
+  mode: TypeOfMode,
+  lanes: Lanes
 ): Fiber => {
   const type = element.type
   const key = element.key as any
   const pendingProps = element.props
 
-  const fiber = createFiberFromTypeAndProps(type, key, pendingProps, mode)
+  const fiber = createFiberFromTypeAndProps(
+    type,
+    key,
+    pendingProps,
+    mode,
+    lanes
+  )
 
   return fiber
 }

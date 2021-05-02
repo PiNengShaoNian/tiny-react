@@ -10,3 +10,7 @@ let currentUpdatePriority: EventPriority = NoLane
 export const getCurrentUpdatePriority = (): EventPriority => {
   return currentUpdatePriority
 }
+
+export const setCurrentUpdatePriority = (newPriority: EventPriority): void => {
+  currentUpdatePriority = newPriority
+}

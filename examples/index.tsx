@@ -18,7 +18,7 @@ const App = () => {
       //   console.log('span bubble')
       // }}
       onClickCapture={() => {
-        setNum(4)
+        setNum(num + 1)
       }}
     >
       sdfsad-{num}

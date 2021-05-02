@@ -113,7 +113,7 @@ export const getNextLanes = (root: FiberRoot, wipLanes: Lanes): Lanes => {
 }
 
 export const includesSomeLane = (a: Lanes | Lane, b: Lanes | Lane): boolean => {
-  return (a | b) !== NoLanes
+  return (a & b) !== NoLanes
 }
 
 export const mergeLanes = (a: Lanes | Lane, b: Lanes | Lane): Lanes => {
