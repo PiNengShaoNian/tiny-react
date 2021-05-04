@@ -145,3 +145,7 @@ export const createLaneMap = <T>(initial: T): LaneMap<T> => {
 
   return laneMap
 }
+
+export const isSubsetOfLanes = (set: Lanes, subset: Lanes | Lane) => {
+  return (set & subset) === subset
+}

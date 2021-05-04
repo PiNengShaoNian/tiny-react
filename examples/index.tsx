@@ -11,7 +11,7 @@ const Wrapper: React.FC<{
 )
 
 const App = () => {
-  const [num, setNum] = useState(3)
+  const [num, setNum] = useState(0)
   return (
     <span
       // onClick={() => {
