@@ -153,9 +153,10 @@ export const createFiberFromElement = (
  */
 export const createFiberFromText = (
   content: string,
-  mode: TypeOfMode
+  mode: TypeOfMode,
+  lanes: Lanes
 ): Fiber => {
   const fiber = createFiber(HostText, content, null, mode)
-
+  fiber.lanes = lanes
   return fiber
 }
