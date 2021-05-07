@@ -187,6 +187,8 @@ export const beginWork = (
       switch (workInProgress.tag) {
         case HostRoot:
           break
+        case HostText:
+          break
         default: {
           throw new Error('Not Implement')
         }
@@ -234,4 +236,8 @@ export const beginWork = (
   }
 
   throw new Error('Not Implement')
+}
+
+export const markWorkInProgressReceivedUpdate = () => {
+  didReceiveUpdate = true
 }

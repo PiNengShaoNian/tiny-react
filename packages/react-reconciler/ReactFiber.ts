@@ -14,7 +14,7 @@ import {
   NoMode,
   TypeOfMode,
 } from './ReactTypeOfMode'
-import { Flags } from './ReactFiberFlags'
+import { Flags, NoFlags } from './ReactFiberFlags'
 import { Lanes, NoLanes } from './ReactFiberLane'
 
 class FiberNode {
@@ -92,6 +92,12 @@ export const createWorkInProgress = (
 
     workInProgress.alternate = current
     current.alternate = workInProgress
+  } else {
+    workInProgress.pendingProps = pendingProps
+    workInProgress.type = current.type
+    workInProgress.flags = NoFlags
+    workInProgress.subtreeFlags = NoFlags
+    workInProgress.deletions = null
   }
 
   workInProgress.lanes = current.lanes
@@ -100,7 +106,7 @@ export const createWorkInProgress = (
   // workInProgress.flags = current.flags
   workInProgress.child = current.child
   // workInProgress.memoizedProps = current.memoizedProps
-  // workInProgress.memoizedState = current.memoizedState
+  workInProgress.memoizedState = current.memoizedState
 
   return workInProgress
 }

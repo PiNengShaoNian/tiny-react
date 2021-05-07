@@ -1,3 +1,4 @@
+import { commitUpdate, UpdatePayload } from '../react-dom/ReactDOMHostConfig'
 import { Container } from '../react-dom/ReactDomRoot'
 import {
   BeforeMutationMask,
@@ -10,11 +11,17 @@ import {
 import {
   appendChild,
   appendChildToContainer,
+  commitTextUpdate,
   insertBefore,
   insertInContainerBefore,
 } from './ReactFiberHostConfig'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+} from './ReactWorkTags'
 
 let nextEffect: Fiber | null = null
 
@@ -250,6 +257,52 @@ export const commitLayoutEffects = (
   //   commitLayoutEffects_begin(finishedWork, root)
 }
 
+const commitWork = (current: Fiber | null, finishedWork: Fiber): void => {
+  switch (finishedWork.tag) {
+    case FunctionComponent:
+      // commitHookEffectListUnmount()
+      throw new Error('Not Implement')
+
+      return
+    case HostComponent: {
+      const instance: Element = finishedWork.stateNode
+
+      if (instance) {
+        const newProps = finishedWork.memoizedProps
+        const oldProps = current !== null ? current.memoizedProps : newProps
+        const type = finishedWork.type
+
+        const updatePayload: null | UpdatePayload = finishedWork.updateQueue as any
+
+        finishedWork.updateQueue = null
+
+        if (updatePayload !== null) {
+          commitUpdate(
+            instance,
+            updatePayload,
+            type,
+            oldProps,
+            newProps,
+            finishedWork
+          )
+        }
+      }
+    }
+    case HostText: {
+      const textInstance: Text = finishedWork.stateNode
+      const newText = finishedWork.memoizedProps
+
+      const oldText = current !== null ? current.memoizedProps : newText
+
+      commitTextUpdate(textInstance, oldText, newText)
+      return
+    }
+    default: {
+      throw new Error('Not Implement')
+    }
+  }
+}
+
 const commitMutationEffectsOnFiber = (
   finishedWork: Fiber,
   root: FiberRoot
@@ -258,6 +311,7 @@ const commitMutationEffectsOnFiber = (
 
   if (flags & ContentReset) {
     //todo
+    throw new Error('Not Implement')
   }
 
   const primaryFlags = flags & (Placement | Update)
@@ -266,6 +320,18 @@ const commitMutationEffectsOnFiber = (
     case Placement: {
       commitPlacement(finishedWork)
       finishedWork.flags &= ~Placement
+      break
+    }
+    case 0: {
+      break
+    }
+    case Update: {
+      const current = finishedWork.alternate
+      commitWork(current, finishedWork)
+      break
+    }
+    default: {
+      throw new Error('Not Implement')
     }
   }
 }

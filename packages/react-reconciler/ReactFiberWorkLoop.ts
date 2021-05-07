@@ -99,6 +99,7 @@ const performUnitOfWork = (unitOfWork: Fiber): void => {
   //创建或者reconcile unitOfWork.child并将其返回
   next = beginWork(current, unitOfWork, subtreeRenderLanes)
 
+  unitOfWork.memoizedProps = unitOfWork.pendingProps
   //进行的时前序遍历，next为null说明该节点没有子节点了，对其进行归过程
   if (next === null) {
     //todo completeUnitofWork

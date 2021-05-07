@@ -43,3 +43,43 @@ export const setInitialProperties = (
 ) => {
   setInitialDOMProperties(tag, domElement, rawProps)
 }
+
+const updateDOMProperties = (domElement: Element, updatePayload: any[]) => {
+  for (let i = 0; i < updatePayload.length; i += 2) {
+    const propKey = updatePayload[i]
+    const propValue = updatePayload[i + 1]
+
+    if (propKey === STYLE) {
+      throw new Error('Not Implement')
+    } else if (propKey === CHILDREN) {
+      setTextContent(domElement, propValue)
+    } else {
+      throw new Error('Not Implement')
+    }
+  }
+}
+
+export const updateProperties = (
+  domElement: Element,
+  updatePayload: any[],
+  tag: string,
+  lastRawProps: Record<string, any> & Object,
+  nextRawProps: Record<string, any> & Object
+): void => {
+  if (
+    tag === 'input' &&
+    nextRawProps.type === 'radio' &&
+    nextRawProps.name != null
+  ) {
+    throw new Error('Not Implement')
+  }
+
+  updateDOMProperties(domElement, updatePayload)
+
+  switch (tag) {
+    case 'input':
+    case 'textarea':
+    case 'select':
+      throw new Error('Not Implement')
+  }
+}

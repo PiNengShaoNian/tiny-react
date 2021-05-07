@@ -13,6 +13,7 @@ import {
   NoLane,
   NoLanes,
 } from './ReactFiberLane'
+import { markWorkInProgressReceivedUpdate } from './ReactFiberBeginWork'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -322,6 +323,9 @@ const updateReducer = <S, I, A>(
       newBaseQueueLast.next = newBaseQueueFirst!
     }
 
+    if (!Object.is(newState, hook.memoizedState)) {
+      markWorkInProgressReceivedUpdate()
+    }
     hook.memoizedState = newState
     hook.baseState = newBaseState
     hook.baseQueue = newBaseQueueLast

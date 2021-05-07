@@ -1,9 +1,13 @@
 import {
   createTextInstance,
   finalizeInitialChildren,
+  prepareUpdate,
+  Props,
+  Type,
 } from '../react-dom/ReactDOMHostConfig'
-import { NoFlags } from './ReactFiberFlags'
+import { NoFlags, Update } from './ReactFiberFlags'
 import { appendInitialChild, createInstance } from './ReactFiberHostConfig'
+import { mergeLanes, NoLanes } from './ReactFiberLane'
 import { Fiber } from './ReactInternalTypes'
 import {
   FunctionComponent,
@@ -54,6 +58,7 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
     completedWork.alternate !== null &&
     completedWork.alternate.child === completedWork.child
   let subtreeFlags = NoFlags
+  let newChildLanes = NoLanes
 
   if (!didBailout) {
     let child = completedWork.child
@@ -68,8 +73,21 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
     }
     completedWork.subtreeFlags |= subtreeFlags
   } else {
-    //todo
-    throw new Error('Not Implement')
+    let child = completedWork.child
+
+    while (child !== null) {
+      newChildLanes = mergeLanes(
+        newChildLanes,
+        mergeLanes(child.lanes, child.childLanes)
+      )
+
+      subtreeFlags |= child.subtreeFlags
+      subtreeFlags |= child.flags
+
+      child.return = completedWork
+
+      child = child.sibling
+    }
   }
 
   return didBailout
@@ -83,6 +101,42 @@ const hadNoMutationsEffects = (current: null | Fiber, completedWork: Fiber) => {
   return false
 }
 
+const markUpdate = (workInProgress: Fiber) => {
+  workInProgress.flags |= Update
+}
+
+const updateHostText = (
+  current: Fiber,
+  workInProgress: Fiber,
+  oldText: string,
+  newText: string
+) => {
+  if (oldText !== newText) {
+    markUpdate(workInProgress)
+  }
+}
+
+const updateHostComponent = (
+  current: Fiber,
+  workInProgress: Fiber,
+  type: Type,
+  newProps: Props
+) => {
+  const oldProps = current.memoizedProps
+  if (oldProps === newProps) {
+    return
+  }
+
+  const instance: Element = workInProgress.stateNode
+
+  const updatePayload = prepareUpdate(instance, type, oldProps, newProps)
+
+  workInProgress.updateQueue = updatePayload
+  if (updatePayload) {
+    markUpdate(workInProgress)
+  }
+}
+
 export const completeWork = (
   current: Fiber | null,
   workInProgress: Fiber
@@ -92,6 +146,7 @@ export const completeWork = (
   switch (workInProgress.tag) {
     case IndeterminateComponent:
     case FunctionComponent:
+      bubbleProperties(workInProgress)
       return null
     case HostRoot: {
       //todo
@@ -102,8 +157,7 @@ export const completeWork = (
     case HostComponent: {
       const type = workInProgress.type
       if (current !== null && workInProgress.stateNode != null) {
-        //todo
-        throw new Error('Not Implement')
+        updateHostComponent(current, workInProgress, type, newProps)
       } else {
         const instance = createInstance(type, newProps, workInProgress)
 
@@ -113,19 +167,23 @@ export const completeWork = (
         appendAllChildren(instance, workInProgress)
         workInProgress.stateNode = instance
 
-        bubbleProperties(workInProgress)
-
         if (finalizeInitialChildren(instance, type, newProps)) {
+          throw new Error('Not Implement')
         }
       }
 
+      bubbleProperties(workInProgress)
       return null
     }
     case HostText: {
       const newText = newProps
 
       if (current && workInProgress.stateNode !== null) {
-        throw new Error('Not Implement')
+        /**
+         * 如果我们复用了改节点，那么意味着我们需要一个side-effect去做这个更新
+         */
+        const oldText = current.memoizedProps
+        updateHostText(current, workInProgress, oldText, newText)
       } else {
         workInProgress.stateNode = createTextInstance(newText)
       }
