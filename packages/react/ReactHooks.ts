@@ -17,3 +17,11 @@ export const useState = <S>(
 
   return dispatcher.useState(initialState)
 }
+
+export const useEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+): void => {
+  const dispatcher = resolveDispatcher()
+  return dispatcher.useEffect(create, deps)
+}

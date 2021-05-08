@@ -19,7 +19,7 @@ import { Lanes, NoLanes } from './ReactFiberLane'
 
 class FiberNode {
   stateNode: any = null
-  updateQueue: unknown
+  updateQueue: unknown = null
   return: Fiber | null = null
   alternate: Fiber | null = null
   memoizedState: any = null

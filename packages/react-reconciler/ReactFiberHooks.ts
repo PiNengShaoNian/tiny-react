@@ -14,6 +14,12 @@ import {
   NoLanes,
 } from './ReactFiberLane'
 import { markWorkInProgressReceivedUpdate } from './ReactFiberBeginWork'
+import { Flags, Passive as PassiveEffect } from './ReactFiberFlags'
+import {
+  HookFlags,
+  Passive as HookPassive,
+  HasEffect as HookHasEffect,
+} from './ReactHookEffectTags'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -26,6 +32,18 @@ export type Hook = {
   baseState: any
   queue: UpdateQueue<any, any> | null
   baseQueue: Update<any, any> | null
+}
+
+export type FunctionComponentUpdateQueue = {
+  lastEffect: Effect | null
+}
+
+export type Effect = {
+  tag: HookFlags
+  create: () => (() => void) | void
+  destroy: (() => void) | void
+  deps: unknown[] | null
+  next: Effect
 }
 
 let workInProgressHook: Hook | null = null
@@ -343,14 +361,6 @@ const updateState = <S>(
   return updateReducer(basicStateReducer, initialState)
 }
 
-const HooksDispatcherOnMount: Dispatcher = {
-  useState: mountState,
-}
-
-const HooksDispatcherOnUpdate: Dispatcher = {
-  useState: updateState,
-}
-
 export const renderWithHooks = <Props, SecondArg>(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -372,4 +382,75 @@ export const renderWithHooks = <Props, SecondArg>(
   currentlyRenderingFiber = null as any
 
   return children
+}
+
+const pushEffect = (
+  tag: HookFlags,
+  create: Effect['create'],
+  destroy: Effect['destroy'],
+  deps: Effect['deps']
+) => {
+  const effect: Effect = {
+    tag,
+    create,
+    destroy,
+    deps,
+    next: null as any,
+  }
+
+  let componentUpdateQueue: null | FunctionComponentUpdateQueue = currentlyRenderingFiber.updateQueue as any
+
+  if (componentUpdateQueue === null) {
+    componentUpdateQueue = {
+      lastEffect: null,
+    }
+    currentlyRenderingFiber.updateQueue = componentUpdateQueue
+    componentUpdateQueue.lastEffect = effect.next = effect
+  } else {
+    const lastEffect = componentUpdateQueue.lastEffect
+    if (lastEffect === null) {
+      componentUpdateQueue.lastEffect = effect.next = effect
+    } else {
+      const firstEffect = lastEffect.next
+      lastEffect.next = effect
+      effect.next = firstEffect
+      componentUpdateQueue.lastEffect = effect
+    }
+  }
+
+  return effect
+}
+
+const mountEffectImpl = (
+  fiberFlags: Flags,
+  hookFlags: HookFlags,
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+): void => {
+  const hook = mountWorkInProgressHook()
+  const nextDeps = deps === undefined ? null : deps
+  currentlyRenderingFiber.flags |= fiberFlags
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    undefined,
+    nextDeps
+  )
+}
+
+const mountEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+) => {
+  return mountEffectImpl(PassiveEffect, HookPassive, create, deps)
+}
+
+const HooksDispatcherOnMount: Dispatcher = {
+  useState: mountState,
+  useEffect: mountEffect,
+}
+
+const HooksDispatcherOnUpdate: Dispatcher = {
+  useState: updateState,
+  useEffect: null as any,
 }

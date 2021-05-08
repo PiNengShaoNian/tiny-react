@@ -1,4 +1,4 @@
-import React, { useState } from '../packages/react'
+import React, { useState, useEffect } from '../packages/react'
 import { createRoot, render } from '../packages/react-dom'
 
 const Wrapper: React.FC<{
@@ -9,6 +9,10 @@ const Wrapper: React.FC<{
 const App = () => {
   const [num, setNum] = useState(0)
   const [num1, setNum1] = useState(0)
+
+  useEffect(() => {
+    console.log('sa')
+  }, [])
 
   console.log('render')
   return (

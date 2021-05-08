@@ -134,4 +134,8 @@ type BasicStateAction<S> = ((a: S) => S) | S
 
 export type Dispatcher = {
   useState<S>(initialState: (() => S) | S): [S, Dispatch<BasicStateAction<S>>]
+  useEffect(
+    create: () => (() => void) | void,
+    deps: unknown[] | void | null
+  ): void
 }
