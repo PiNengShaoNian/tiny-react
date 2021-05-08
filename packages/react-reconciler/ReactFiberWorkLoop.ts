@@ -151,6 +151,13 @@ const commitRootImpl = (root: FiberRoot): null => {
 
   root.finishedWork = null
 
+  /**
+   * CommitRoot不会返回连续的操作,他总是同步的完成,所以我们可以清除他们
+   * 以允许新的callback能被规划
+   */
+  root.callbackNode = null
+  root.callbackPriority = NoLane
+
   workInProgressRoot = null
   workInProgress = null
 
@@ -248,6 +255,9 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
   } else {
     throw new Error('Not Implement')
   }
+
+  root.callbackNode = newCallbackNode
+  root.callbackPriority = newCallbackPriority
 }
 
 const markUpdateLaneFromFiberToRoot = (

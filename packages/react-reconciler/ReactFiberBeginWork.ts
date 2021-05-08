@@ -189,6 +189,8 @@ export const beginWork = (
           break
         case HostText:
           break
+        case FunctionComponent:
+          break
         default: {
           throw new Error('Not Implement')
         }

@@ -3,15 +3,14 @@ import { createRoot, render } from '../packages/react-dom'
 
 const Wrapper: React.FC<{
   onClick: () => void
-  onClickCapture: () => void
-}> = ({ onClick, onClickCapture }) => (
-  <div onClickCapture={onClickCapture} onClick={onClick}>
-    wrapper
-  </div>
-)
+  num: number
+}> = ({ onClick, num }) => <div onClick={onClick}>wrapper-{num}</div>
 
 const App = () => {
   const [num, setNum] = useState(0)
+  const [num1, setNum1] = useState(0)
+
+  console.log('render')
   return (
     <span
       // onClick={() => {
@@ -19,9 +18,17 @@ const App = () => {
       // }}
       onClickCapture={() => {
         setNum(num + 1)
+        setNum(num + 2)
+        setNum(num + 3)
+        setNum1(num1 + 2)
+        setNum1(num1 + 4)
+        setNum1(num1 + 6)
       }}
     >
       sdfsad-{num}
+      <div />
+      {num1}
+      <Wrapper onClick={() => {}} num={num1 + num}></Wrapper>
     </span>
   )
 }

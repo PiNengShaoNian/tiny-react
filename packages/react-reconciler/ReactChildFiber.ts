@@ -67,8 +67,9 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     lanes: Lanes
   ): Fiber => {
     if (current !== null) {
-      //todo
-      throw new Error('Not Implement')
+      const existing = useFiber(current, element.props)
+      existing.return = returnFiber
+      return existing
     }
 
     const created = createFiberFromElement(element, returnFiber.mode, lanes)
