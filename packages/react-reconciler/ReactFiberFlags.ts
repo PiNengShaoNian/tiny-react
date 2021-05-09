@@ -13,3 +13,5 @@ export const Passive = /*                      */ 0b00000000000010000000000
 export const MutationMask = Placement | Update | ChildDeletion | ContentReset
 
 export const BeforeMutationMask = Update
+
+export const PassiveMask = Passive | ChildDeletion

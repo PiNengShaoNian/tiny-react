@@ -35,7 +35,9 @@ const updateFunctionComponent = (
   )
 
   if (current !== null && !didReceiveUpdate) {
-    throw new Error('Not Implement')
+    // throw new Error('Not Implement')
+    current.lanes = NoLanes
+    return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes)
   }
 
   reconcileChildren(current, workInProgress, nextChildren, renderLanes)
@@ -202,7 +204,8 @@ export const beginWork = (
     didReceiveUpdate = false
   }
 
-  //在进入begin流程前，清楚pending中的lanes
+  //在进入begin流程前，先清除pending中的lanes，否则会导致HostRoot不能进入bailout逻辑，
+  //导致后续的更新不会触发
   workInProgress.lanes = NoLanes
 
   switch (workInProgress.tag) {

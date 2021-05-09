@@ -8,7 +8,7 @@ import {
   commitMutationEffects,
 } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
-import { MutationMask, NoFlags } from './ReactFiberFlags'
+import { MutationMask, NoFlags, PassiveMask } from './ReactFiberFlags'
 import {
   getHighestPriorityLane,
   getNextLanes,
@@ -32,6 +32,10 @@ import { LegacyRoot } from './ReactRootTags'
 import { ConcurrentMode, NoMode } from './ReactTypeOfMode'
 import { HostRoot } from './ReactWorkTags'
 import { now } from './Scheduler'
+import {
+  scheduleCallback,
+  NormalPriority as NormalSchedulerPriority,
+} from './Scheduler'
 
 type ExecutionContext = number
 export const NoContext = /*             */ 0b000000
@@ -58,6 +62,8 @@ let workInProgress: Fiber | null = null
 let workInProgressRootRenderLanes: Lanes = NoLanes
 
 let currentEventTime: number = NoTimestamp
+
+let rootDoesHavePassiveEffects: boolean = false
 
 export let subtreeRenderLanes: Lanes = NoLanes
 
@@ -160,6 +166,22 @@ const commitRootImpl = (root: FiberRoot): null => {
 
   workInProgressRoot = null
   workInProgress = null
+
+  if (
+    (finishedWork.subtreeFlags & PassiveMask) !== NoFlags ||
+    (finishedWork.flags & PassiveMask) !== NoFlags
+  ) {
+    if (!rootDoesHavePassiveEffects) {
+      rootDoesHavePassiveEffects = true
+      scheduleCallback(
+        NormalSchedulerPriority,
+        () => {
+          throw new Error('Not Implement')
+        },
+        null
+      )
+    }
+  }
 
   const subtreeHasEffects =
     (finishedWork.subtreeFlags & MutationMask) !== NoFlags
