@@ -6,6 +6,8 @@ import {
   commitBeforeMutationEffects,
   commitLayoutEffects,
   commitMutationEffects,
+  commitPassiveMountEffects,
+  commitPassiveUnmountEffects,
 } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { MutationMask, NoFlags, PassiveMask } from './ReactFiberFlags'
@@ -64,6 +66,7 @@ let workInProgressRootRenderLanes: Lanes = NoLanes
 let currentEventTime: number = NoTimestamp
 
 let rootDoesHavePassiveEffects: boolean = false
+let rootWithPendingPassiveEffects: FiberRoot | null = null
 
 export let subtreeRenderLanes: Lanes = NoLanes
 
@@ -127,6 +130,36 @@ const prepareFreshStack = (root: FiberRoot, lanes: Lanes) => {
   workInProgressRootRenderLanes = subtreeRenderLanes = lanes
 }
 
+const flushPassiveEffectsImpl = () => {
+  if (rootWithPendingPassiveEffects === null) return false
+
+  const root = rootWithPendingPassiveEffects
+  // const lanes =
+  rootWithPendingPassiveEffects = null
+
+  const prevExecutionContext = executionContext
+  executionContext |= CommitContext
+  commitPassiveUnmountEffects(root.current)
+  commitPassiveMountEffects(root, root.current)
+
+  executionContext = prevExecutionContext
+
+  flushSyncCallbacks()
+
+  return true
+}
+
+export const flushPassiveEffects = (): boolean => {
+  if (rootWithPendingPassiveEffects !== null) {
+    try {
+      return flushPassiveEffectsImpl()
+    } finally {
+    }
+  }
+
+  return false
+}
+
 const renderRootSync = (root: FiberRoot, lanes: Lanes) => {
   //如果根节点改变调用prepareFreshStack重置参数
 
@@ -151,6 +184,11 @@ const renderRootSync = (root: FiberRoot, lanes: Lanes) => {
 }
 
 const commitRootImpl = (root: FiberRoot): null => {
+  do {
+    //todo
+    // throw new Error('Not Implement')
+  } while (rootWithPendingPassiveEffects !== null)
+
   const finishedWork = root.finishedWork
 
   if (finishedWork === null) return null
@@ -176,7 +214,8 @@ const commitRootImpl = (root: FiberRoot): null => {
       scheduleCallback(
         NormalSchedulerPriority,
         () => {
-          throw new Error('Not Implement')
+          flushPassiveEffects()
+          return null
         },
         null
       )
@@ -197,6 +236,13 @@ const commitRootImpl = (root: FiberRoot): null => {
     commitLayoutEffects(finishedWork, root)
   } else {
     root.current = finishedWork
+  }
+
+  const rootDidHavePassiveEffects = rootDoesHavePassiveEffects
+
+  if (rootDidHavePassiveEffects) {
+    rootDoesHavePassiveEffects = false
+    rootWithPendingPassiveEffects = root
   }
 
   return null
