@@ -14,7 +14,10 @@ import {
   NoLanes,
 } from './ReactFiberLane'
 import { markWorkInProgressReceivedUpdate } from './ReactFiberBeginWork'
-import { Flags, Passive as PassiveEffect } from './ReactFiberFlags'
+import {
+  Flags as FiberFlags,
+  Passive as PassiveEffect,
+} from './ReactFiberFlags'
 import {
   HookFlags,
   Passive as HookPassive,
@@ -371,6 +374,11 @@ export const renderWithHooks = <Props, SecondArg>(
 ) => {
   renderLanes = nextRenderLanes
   currentlyRenderingFiber = workInProgress
+
+  //Function组件每次update是都会将新的effect挂载在上面，如果
+  //不清除那么老的effect会一直存在并被调用
+  workInProgress.updateQueue = null
+
   ReactCurrentDispatcher.current =
     current === null || current.memoizedState === null
       ? HooksDispatcherOnMount
@@ -382,6 +390,62 @@ export const renderWithHooks = <Props, SecondArg>(
   currentlyRenderingFiber = null as any
 
   return children
+}
+
+const areHookInputsEqual = (
+  nextDeps: unknown[],
+  prevDeps: unknown[] | null
+) => {
+  if (prevDeps === null) {
+    throw new Error('Not Implement')
+  }
+
+  for (let i = 0; i < prevDeps.length && i < nextDeps.length; ++i) {
+    if (Object.is(nextDeps[i], prevDeps[i])) continue
+
+    return false
+  }
+
+  return true
+}
+
+const updateEffectImpl = (
+  fiberFlags: FiberFlags,
+  hookFlags: HookFlags,
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+): void => {
+  const hook = updateWorkInProgressHook()
+  const nextDeps = deps === undefined ? null : deps
+
+  let destroy = undefined
+
+  if (currentHook !== null) {
+    const prevEffect = currentHook.memoizedState
+    destroy = prevEffect.destroy
+    if (nextDeps !== null) {
+      const prevDeps = prevEffect.deps
+      if (areHookInputsEqual(nextDeps, prevDeps)) {
+        hook.memoizedState = pushEffect(hookFlags, create, destroy, nextDeps)
+        return
+      }
+    }
+  }
+
+  currentlyRenderingFiber.flags |= fiberFlags
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    destroy,
+    nextDeps
+  )
+}
+
+const updateEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+): void => {
+  return updateEffectImpl(PassiveEffect, HookPassive, create, deps)
 }
 
 const pushEffect = (
@@ -422,7 +486,7 @@ const pushEffect = (
 }
 
 const mountEffectImpl = (
-  fiberFlags: Flags,
+  fiberFlags: FiberFlags,
   hookFlags: HookFlags,
   create: () => (() => void) | void,
   deps: unknown[] | void | null
@@ -452,5 +516,5 @@ const HooksDispatcherOnMount: Dispatcher = {
 
 const HooksDispatcherOnUpdate: Dispatcher = {
   useState: updateState,
-  useEffect: null as any,
+  useEffect: updateEffect,
 }

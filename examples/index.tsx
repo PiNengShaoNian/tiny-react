@@ -8,35 +8,24 @@ const Wrapper: React.FC<{
 
 const App = () => {
   const [num, setNum] = useState(0)
-  // const [num1, setNum1] = useState(0)
+  const [num1, setNum1] = useState(0)
+  useEffect(() => {
+    console.log('num', num)
+  }, [num])
 
   useEffect(() => {
-    console.log('sa')
-  }, [])
+    console.log('num1', num1)
+  }, [num1])
 
   return (
-    <span
-      // onClick={() => {
-      //   console.log('span bubble')
-      // }}
-      onClickCapture={() => {
-        setNum(num + 1)
-        // setNum(num + 2)
-        // setNum(num + 3)
-        // setNum1(num1 + 2)
-        // setNum1(num1 + 4)
-        // setNum1(num1 + 6)
-      }}
-    >
-      sdfsad-{num}
-      {/* <div /> */}
-      {/* {num1}
-      <Wrapper onClick={() => {}} num={num1 + num}></Wrapper> */}
+    <span>
+      <button onClick={() => setNum(num + 1)}>num-{num}</button>
+      <br />
+      <button onClick={() => setNum1(num1 + 1)}>num1-{num1}</button>
     </span>
   )
 }
 
-// createRoot(document.querySelector('#app')!).render(<App />)
+// render(<App />, document.querySelector('#app')!)
 
-render(<App />, document.querySelector('#app')!)
-// ReactDom.render(<App />, document.querySelector('#app')!)
+createRoot(document.querySelector('#app')!).render(<App />)

@@ -189,6 +189,8 @@ const commitRootImpl = (root: FiberRoot): null => {
     // throw new Error('Not Implement')
   } while (rootWithPendingPassiveEffects !== null)
 
+  console.log('commit root')
+
   const finishedWork = root.finishedWork
 
   if (finishedWork === null) return null
