@@ -205,7 +205,8 @@ export const beginWork = (
   }
 
   //在进入begin流程前，先清除pending中的lanes，否则会导致HostRoot不能进入bailout逻辑，
-  //导致后续的更新不会触发
+  //导致后续的更新不会触发，还会导致root上的pendingLanes一直不为空
+  //会让performConcurrentWorkOnRoot一直被schedule下去
   workInProgress.lanes = NoLanes
 
   switch (workInProgress.tag) {

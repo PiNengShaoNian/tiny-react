@@ -207,7 +207,7 @@ const unstable_scheduleCallback = (
   options: {
     delay: number
   } | null
-) => {
+): Task => {
   const currentTime = getCurrentTime()
   let startTime
 
@@ -256,6 +256,8 @@ const unstable_scheduleCallback = (
       requestHostCallback(flushWork)
     }
   }
+
+  return newTask
 }
 
 export {

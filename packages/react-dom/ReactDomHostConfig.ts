@@ -1,3 +1,5 @@
+import { DefaultEventPriority } from '../react-reconciler/ReactEventPriorities'
+import { Lane } from '../react-reconciler/ReactFiberLane'
 import { Fiber } from '../react-reconciler/ReactInternalTypes'
 import { registrationNameDependencies } from './events/EventRegistry'
 import {
@@ -229,4 +231,12 @@ export const commitUpdate = (
 ): void => {
   updateFiberProps(domElement, newProps)
   updateProperties(domElement, updatePayload, type, oldProps, newProps)
+}
+
+export const getCurrentEventPriority = (): Lane => {
+  const currentEvent = window.event
+  if (currentEvent === undefined) {
+    return DefaultEventPriority
+  }
+  throw new Error('Not Implement')
 }

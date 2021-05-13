@@ -1,5 +1,13 @@
-import { scheduleMicrotask } from './ReactFiberHostConfig'
-import { getCurrentUpdatePriority } from './ReactEventPriorities'
+import {
+  getCurrentEventPriority,
+  scheduleMicrotask,
+} from './ReactFiberHostConfig'
+import {
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  lanesToEventPriority,
+} from './ReactEventPriorities'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
 import {
@@ -17,12 +25,14 @@ import {
   includesSomeLane,
   Lane,
   Lanes,
+  markRootFinished,
   markRootUpdated,
   markStarvedLanesAsExpired,
   mergeLanes,
   NoLane,
   NoLanes,
   NoTimestamp,
+  shouldTimeSlice,
   SyncLane,
 } from './ReactFiberLane'
 import {
@@ -45,6 +55,9 @@ const BatchedContext = /*               */ 0b000001
 const LegacyUnbatchedContext = /*       */ 0b000100
 const RenderContext = /*                */ 0b001000
 const CommitContext = /*                */ 0b010000
+
+type RootExitStatus = 5
+const RootCompleted = 5
 
 let executionContext: ExecutionContext = NoContext
 
@@ -204,6 +217,9 @@ const commitRootImpl = (root: FiberRoot): null => {
   root.callbackNode = null
   root.callbackPriority = NoLane
 
+  let remainingLanes = mergeLanes(finishedWork.lanes, finishedWork.childLanes)
+  markRootFinished(root, remainingLanes)
+
   workInProgressRoot = null
   workInProgress = null
 
@@ -323,11 +339,86 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
     scheduleMicrotask(flushSyncCallbacks)
     newCallbackNode = null
   } else {
-    throw new Error('Not Implement')
+    let schedulerPriorityLevel
+    switch (lanesToEventPriority(nextLanes)) {
+      case DefaultEventPriority:
+        schedulerPriorityLevel = NormalSchedulerPriority
+        break
+      default:
+        throw new Error('Not implement')
+    }
+
+    newCallbackNode = scheduleCallback(
+      schedulerPriorityLevel,
+      performConcurrentWorkOnRoot.bind(null, root),
+      null
+    )
   }
 
   root.callbackNode = newCallbackNode
   root.callbackPriority = newCallbackPriority
+}
+
+const performConcurrentWorkOnRoot = (
+  root: FiberRoot,
+  didTimeout: boolean
+): null | Function => {
+  //执行到这我们已经知道实在一个react事件中了，可以把当前的eventTime清楚了，
+  //下一次更新的时候会计算一个新的
+  currentEventTime = NoTimestamp
+
+  const originalCallbackNode = root.callbackNode
+  const didFlushPassiveEffects = flushPassiveEffects()
+
+  if (didFlushPassiveEffects) {
+    throw new Error('Not Implement')
+  }
+
+  const lanes = getNextLanes(
+    root,
+    root === workInProgressRoot ? workInProgressRootRenderLanes : NoLanes
+  )
+
+  if (lanes === NoLanes) {
+    return null
+  }
+
+  const exitStatus =
+    shouldTimeSlice(root, lanes) && !didTimeout
+      ? renderRootConcurrent(root, lanes)
+      : renderRootSync(root, lanes)
+
+  debugger
+  const finishedWork: Fiber = root.current.alternate as any
+  root.finishedWork = finishedWork
+
+  finishConcurrentRender(root, 5, lanes)
+
+  ensureRootIsScheduled(root, now())
+
+  if (root.callbackNode === originalCallbackNode) {
+    //这个被规划的task node和当前执行的一样，需要返回一个continuation
+    return performConcurrentWorkOnRoot.bind(null, root)
+  }
+  return null
+}
+
+const finishConcurrentRender = (
+  root: FiberRoot,
+  exitStatus: RootExitStatus,
+  lanes: Lanes
+): void => {
+  switch (exitStatus) {
+    case RootCompleted:
+      commitRoot(root)
+      break
+    default:
+      throw new Error('Not Implement')
+  }
+}
+
+const renderRootConcurrent = (root: FiberRoot, lanes: Lanes) => {
+  throw new Error('Not Implement')
 }
 
 const markUpdateLaneFromFiberToRoot = (
@@ -416,7 +507,7 @@ export const scheduleUpdateOnFiber = (
       // throw new Error('Not Implement')
     }
   } else {
-    throw new Error('Not Implement')
+    ensureRootIsScheduled(root, eventTime)
   }
 
   return root
@@ -475,14 +566,14 @@ export const requestUpdateLane = (fiber: Fiber): Lane => {
     throw new Error('Not Implement')
   }
 
-  throw new Error('Not Implement')
-  // const updateLane: Lane = getCurrentUpdatePriority()
+  // throw new Error('Not Implement')
+  const updateLane: Lane = getCurrentUpdatePriority()
 
-  // if (updateLane !== NoLane) {
-  //   return updateLane
-  // }
+  if (updateLane !== NoLane) {
+    return updateLane
+  }
 
-  // const eventLane: Lane = getCurrentEventPriority()
+  const eventLane: Lane = getCurrentEventPriority()
 
-  // return eventLane
+  return eventLane
 }
