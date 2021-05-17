@@ -1,3 +1,5 @@
+import { DiscreteEventPriority } from '../../react-reconciler/ReactEventPriorities'
+import { Lane } from '../../react-reconciler/ReactFiberLane'
 import { DiscreteEvent } from '../../shared/ReactTypes'
 import { Container } from '../ReactDomRoot'
 import { DOMEventName } from './DOMEventNames'
@@ -82,4 +84,14 @@ export const createEventListenerWrapperWithPriority = (
     eventSymtemFlags,
     targetContainer
   )
+}
+
+export const getEventPriority = (domEventName: DOMEventName): Lane => {
+  switch (domEventName) {
+    case 'click':
+      return DiscreteEventPriority
+
+    default:
+      throw new Error('Not Implement')
+  }
 }

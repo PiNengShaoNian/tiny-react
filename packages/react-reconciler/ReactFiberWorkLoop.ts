@@ -38,12 +38,13 @@ import {
 import {
   flushSyncCallbacks,
   scheduleLegacySyncCallback,
+  scheduleSyncCallback,
 } from './ReactFiberSyncTaskQueue'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { LegacyRoot } from './ReactRootTags'
 import { ConcurrentMode, NoMode } from './ReactTypeOfMode'
 import { HostRoot } from './ReactWorkTags'
-import { now } from './Scheduler'
+import { now, shouldYield } from './Scheduler'
 import {
   scheduleCallback,
   NormalPriority as NormalSchedulerPriority,
@@ -56,7 +57,8 @@ const LegacyUnbatchedContext = /*       */ 0b000100
 const RenderContext = /*                */ 0b001000
 const CommitContext = /*                */ 0b010000
 
-type RootExitStatus = 5
+type RootExitStatus = 5 | 0
+const RootIncomplete = 0
 const RootCompleted = 5
 
 let executionContext: ExecutionContext = NoContext
@@ -333,7 +335,7 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
     if (root.tag === LegacyRoot) {
       scheduleLegacySyncCallback(performSyncWorkOnRoot.bind(null, root))
     } else {
-      throw new Error('Not Implement')
+      scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root))
     }
 
     scheduleMicrotask(flushSyncCallbacks)
@@ -388,14 +390,14 @@ const performConcurrentWorkOnRoot = (
       ? renderRootConcurrent(root, lanes)
       : renderRootSync(root, lanes)
 
-  debugger
-  const finishedWork: Fiber = root.current.alternate as any
-  root.finishedWork = finishedWork
+  if (exitStatus !== RootIncomplete) {
+    const finishedWork: Fiber = root.current.alternate as any
+    root.finishedWork = finishedWork
+    finishConcurrentRender(root, 5, lanes)
+  }
 
-  finishConcurrentRender(root, 5, lanes)
-
+  
   ensureRootIsScheduled(root, now())
-
   if (root.callbackNode === originalCallbackNode) {
     //这个被规划的task node和当前执行的一样，需要返回一个continuation
     return performConcurrentWorkOnRoot.bind(null, root)
@@ -417,8 +419,37 @@ const finishConcurrentRender = (
   }
 }
 
+const workLoopConcurrent = () => {
+  while (workInProgress !== null && !shouldYield()) {
+    performUnitOfWork(workInProgress)
+  }
+}
+
 const renderRootConcurrent = (root: FiberRoot, lanes: Lanes) => {
-  throw new Error('Not Implement')
+  const prevExecutionContext = executionContext
+  executionContext |= RenderContext
+
+  //如果root或者lanes变了，我们就抛弃现有的stack然后创建一个新的
+  //否则就从继续从我们离开的地方开始
+  if (workInProgressRoot !== root || workInProgressRootRenderLanes !== lanes) {
+    prepareFreshStack(root, lanes)
+  }
+
+  do {
+    workLoopConcurrent()
+    break
+  } while (true)
+
+  executionContext = prevExecutionContext
+
+  if (workInProgress !== null) {
+    return RootIncomplete
+  } else {
+    workInProgressRoot = null
+    workInProgressRootRenderLanes = NoLanes
+
+    return RootCompleted
+  }
 }
 
 const markUpdateLaneFromFiberToRoot = (

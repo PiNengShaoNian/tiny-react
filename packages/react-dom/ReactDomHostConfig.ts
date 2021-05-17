@@ -6,6 +6,7 @@ import {
   precacheFiberNode,
   updateFiberProps,
 } from './events/ReactDOMComponentTree'
+import { getEventPriority } from './events/ReactDOMEventListener'
 import { setInitialProperties, updateProperties } from './ReactDOMComponent'
 import { Container } from './ReactDomRoot'
 import { setTextContent } from './setTextContent'
@@ -238,5 +239,6 @@ export const getCurrentEventPriority = (): Lane => {
   if (currentEvent === undefined) {
     return DefaultEventPriority
   }
-  throw new Error('Not Implement')
+
+  return getEventPriority(currentEvent.type as any)
 }

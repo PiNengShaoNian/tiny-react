@@ -108,9 +108,9 @@ const shouldYieldToHost = (): boolean => {
 }
 
 const requestHostTimeout = (callback: Function, ms: number): void => {
-  taskTimeoutID = (setTimeout(() => {
+  taskTimeoutID = setTimeout(() => {
     callback(getCurrentTime())
-  }, ms) as unknown) as number
+  }, ms) as unknown as number
 }
 
 const handleTimeout = (currentTime: number) => {
@@ -264,4 +264,5 @@ export {
   getCurrentTime as unstable_now,
   unstable_scheduleCallback,
   NormalPriority as unstable_NormalPriority,
+  shouldYieldToHost as unstable_shouldYield,
 }

@@ -162,7 +162,7 @@ export const includesNonIdleWork = (lanes: Lanes): boolean => {
   return (lanes & NonIdleLanes) !== NonIdleLanes
 }
 
-const enableSyncDefaultUpdates = true
+const enableSyncDefaultUpdates = false
 
 export const shouldTimeSlice = (root: FiberRoot, lanes: Lanes): boolean => {
   if ((lanes & root.expiredLanes) !== NoLanes) {
