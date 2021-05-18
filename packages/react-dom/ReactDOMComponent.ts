@@ -1,3 +1,4 @@
+import { track } from './inputValueTracking'
 import { setTextContent } from './setTextContent'
 
 const STYLE = 'style'
@@ -42,6 +43,18 @@ export const setInitialProperties = (
   rawProps: Object
 ) => {
   setInitialDOMProperties(tag, domElement, rawProps)
+
+  switch (tag) {
+    case 'input':
+      track(domElement as HTMLInputElement)
+      break
+    case 'textarea':
+    case 'option':
+    case 'select':
+      throw new Error('Not Implement')
+    default:
+      break
+  }
 }
 
 const updateDOMProperties = (domElement: Element, updatePayload: any[]) => {

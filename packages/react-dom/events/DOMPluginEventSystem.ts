@@ -8,11 +8,16 @@ import {
   addEventCaptureListenerWithPassiveFlag,
 } from './EventListener'
 import { allNativeEvents } from './EventRegistry'
-import { EventSystemFlags, IS_CAPTURE_PHASE } from './EventSystemFlags'
+import {
+  EventSystemFlags,
+  IS_CAPTURE_PHASE,
+  SHOULD_NOT_PROCESS_POLYFILL_EVENT_PLUGINS,
+} from './EventSystemFlags'
 import { getEventTarget } from './getEventTarget'
 import { getListener } from './getListener'
 import { AnyNativeEvent } from './PluginModuleType'
 import * as SimpleEventPlugin from './plugins/SimpleEventPlugin'
+import * as ChangeEventPlugin from './plugins/ChangeEventPlugin'
 import { createEventListenerWrapperWithPriority } from './ReactDOMEventListener'
 import { batchedEventUpdates } from './ReactDOMUpdateBatching'
 import { ReactSyntheticEvent } from './ReactSyntheticEventType'
@@ -32,6 +37,7 @@ type DispatchEntry = {
 export type DispatchQueue = DispatchEntry[]
 
 SimpleEventPlugin.registerEvents()
+ChangeEventPlugin.registerEvents()
 
 /**
  * 我们不因该在container代理这些事件，而是因该把他们添加到真正的目标dom上
@@ -159,6 +165,23 @@ const extractEvents = (
     eventSystemFlags,
     targetContainer
   )
+
+  const shouldProcessPolyfillPlugins =
+    (eventSystemFlags & SHOULD_NOT_PROCESS_POLYFILL_EVENT_PLUGINS) === 0
+
+  //我们不处理这些事件，直到我们处于事件的冒泡阶段
+  //这也为这我们不再捕获阶段，
+  if (shouldProcessPolyfillPlugins) {
+    ChangeEventPlugin.extractEvents(
+      dispatchQueue,
+      domEventName,
+      targetInst,
+      nativeEvent,
+      nativeEventTarget,
+      eventSystemFlags,
+      targetContainer
+    )
+  }
 }
 
 const createDispatchListener = (
@@ -171,6 +194,41 @@ const createDispatchListener = (
     listener,
     currentTarget,
   }
+}
+
+export const accumulateTwoPhaseListeners = (
+  targetFiber: Fiber | null,
+  reactName: string
+): DispatchListener[] => {
+  const captureName = reactName + 'Capture'
+  const listeners: Array<DispatchListener> = []
+  let instance = targetFiber
+
+  while (instance !== null) {
+    const { stateNode, tag } = instance
+
+    if (tag === HostComponent && stateNode !== null) {
+      const currentTarget = stateNode
+      const captureListener = getListener(instance, captureName)
+
+      if (captureListener !== null) {
+        listeners.unshift(
+          createDispatchListener(instance, captureListener, currentTarget)
+        )
+      }
+
+      const bubbleListener = getListener(instance, reactName)
+      if (bubbleListener !== null) {
+        listeners.push(
+          createDispatchListener(instance, bubbleListener, currentTarget)
+        )
+      }
+    }
+
+    instance = instance.return
+  }
+
+  return listeners
 }
 
 export const accumulateSinglePhaseListeners = (

@@ -62,13 +62,13 @@ const registerSimplePluginEventsAndSetTheirPriorities = (
   }
 }
 
-export const getEventPriorityForPluginSystem = (
-  domEventName: DOMEventName
-): EventPriority => {
-  const priority = eventPriorities.get(domEventName)
+// export const getEventPriorityForPluginSystem = (
+//   domEventName: DOMEventName
+// ): EventPriority => {
+//   const priority = eventPriorities.get(domEventName)
 
-  return priority === undefined ? ContinuousEvent : priority
-}
+//   return priority === undefined ? ContinuousEvent : priority
+// }
 
 export const registerSimpleEvents = () => {
   registerSimplePluginEventsAndSetTheirPriorities(

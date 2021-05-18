@@ -43,7 +43,13 @@ const extractEvents = (
   )
 
   if (listeners.length) {
-    const event = new SyntheticEventCtor()
+    const event = new SyntheticEventCtor(
+      reactName,
+      '',
+      null as any,
+      nativeEvent as any,
+      nativeEventTarget
+    )
     dispatchQueue.push({ event, listeners })
   }
 }

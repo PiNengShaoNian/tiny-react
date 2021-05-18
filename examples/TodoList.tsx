@@ -16,8 +16,10 @@ export const TodoList = () => {
     <div>
       <input
         value={todo}
-        onChange={() => {
-          setTodo(todo)
+        onChange={(e) => {
+          console.log(e.target.value)
+        //   setTodo(todo)
+        //   setTodo(e.target.value)
         }}
       />
     </div>
