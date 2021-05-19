@@ -7,6 +7,7 @@ import {
   DiscreteEventPriority,
   getCurrentUpdatePriority,
   lanesToEventPriority,
+  setCurrentUpdatePriority,
 } from './ReactEventPriorities'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
@@ -53,6 +54,7 @@ import {
 type ExecutionContext = number
 export const NoContext = /*             */ 0b000000
 const BatchedContext = /*               */ 0b000001
+const EventContext = /*                 */ 0b000010
 const LegacyUnbatchedContext = /*       */ 0b000100
 const RenderContext = /*                */ 0b001000
 const CommitContext = /*                */ 0b010000
@@ -396,7 +398,6 @@ const performConcurrentWorkOnRoot = (
     finishConcurrentRender(root, 5, lanes)
   }
 
-  
   ensureRootIsScheduled(root, now())
   if (root.callbackNode === originalCallbackNode) {
     //这个被规划的task node和当前执行的一样，需要返回一个continuation
@@ -551,7 +552,14 @@ export const discreteUpdates = <A, B, C, D, R>(
   c: C,
   d: D
 ): R => {
-  return fn(a, b, c, d)
+  const previousPriority = getCurrentEventPriority()
+
+  try {
+    setCurrentUpdatePriority(DiscreteEventPriority)
+    return fn(a, b, c, d)
+  } finally {
+    setCurrentUpdatePriority(previousPriority)
+  }
 }
 
 /**
@@ -562,7 +570,7 @@ export const discreteUpdates = <A, B, C, D, R>(
  */
 export const batchedEventUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
   const prevExecutionContext = executionContext
-  executionContext |= BatchedContext
+  executionContext |= EventContext
   try {
     return fn(a)
   } finally {

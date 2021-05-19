@@ -29,3 +29,5 @@ export const createSyntheticEvent = () => {
 export const SyntheticEvent = createSyntheticEvent()
 
 export const SyntheticMouseEvent = createSyntheticEvent()
+
+export const SyntheticKeyboardEvent = createSyntheticEvent()

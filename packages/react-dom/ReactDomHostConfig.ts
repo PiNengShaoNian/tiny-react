@@ -9,7 +9,7 @@ import {
 import { getEventPriority } from './events/ReactDOMEventListener'
 import { setInitialProperties, updateProperties } from './ReactDOMComponent'
 import { Container } from './ReactDomRoot'
-import { setTextContent } from './setTextContent'
+import { getHostProps as ReactDOMInputGetHostProps } from './ReactDOMInput'
 
 const STYLE = 'style'
 const CHILDREN = 'children'
@@ -145,6 +145,10 @@ const diffProperties = (
 
   switch (tag) {
     case 'input':
+      lastProps = ReactDOMInputGetHostProps(domElement, lastRawProps)
+      nextProps = ReactDOMInputGetHostProps(domElement, nextRawProps)
+      updatePayload = []
+      break
     case 'option':
     case 'select':
     case 'textarea':

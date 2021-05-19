@@ -10,7 +10,7 @@ import {
 } from '../DOMPluginEventSystem'
 import { EventSystemFlags, IS_CAPTURE_PHASE } from '../EventSystemFlags'
 import { AnyNativeEvent } from '../PluginModuleType'
-import { SyntheticEvent, SyntheticMouseEvent } from '../SyntheticEvent'
+import { SyntheticEvent, SyntheticKeyboardEvent, SyntheticMouseEvent } from '../SyntheticEvent'
 
 const extractEvents = (
   dispatchQueue: DispatchQueue,
@@ -23,9 +23,12 @@ const extractEvents = (
 ): void => {
   let SyntheticEventCtor = SyntheticEvent
   switch (domEventName) {
+    case 'keydown':
+    case 'keyup':
+      SyntheticEventCtor = SyntheticKeyboardEvent
+      break
     case 'click':
       SyntheticEventCtor = SyntheticMouseEvent
-      break
     default:
       break
   }

@@ -1,4 +1,10 @@
-import { DiscreteEventPriority } from '../../react-reconciler/ReactEventPriorities'
+import {
+  ContinuousEventPriority,
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  setCurrentUpdatePriority,
+} from '../../react-reconciler/ReactEventPriorities'
 import { Lane } from '../../react-reconciler/ReactFiberLane'
 import { Container } from '../ReactDomRoot'
 import { DOMEventName } from './DOMEventNames'
@@ -58,6 +64,22 @@ export const dispatchEvent = (
   )
 }
 
+const dispatchContinuousEvent = (
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  targetContainer: EventTarget,
+  nativeEvent: AnyNativeEvent
+) => {
+  const previousPriority = getCurrentUpdatePriority()
+
+  try {
+    setCurrentUpdatePriority(ContinuousEventPriority)
+    dispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent)
+  } finally {
+    setCurrentUpdatePriority(previousPriority)
+  }
+}
+
 export const createEventListenerWrapperWithPriority = (
   targetContainer: EventTarget,
   domEventName: DOMEventName,
@@ -72,6 +94,12 @@ export const createEventListenerWrapperWithPriority = (
       listenerWrapper = dispatchDiscreteEvent
       break
 
+    case DefaultEventPriority:
+      listenerWrapper = dispatchEvent
+      break
+    case ContinuousEventPriority:
+      listenerWrapper = dispatchContinuousEvent
+      break
     default:
       throw new Error('Not Implement')
   }
@@ -143,7 +171,31 @@ export const getEventPriority = (domEventName: DOMEventName): Lane => {
     case 'select':
     case 'selectstart':
       return DiscreteEventPriority
-    default:
+    case 'drag':
+    case 'dragenter':
+    case 'dragexit':
+    case 'dragleave':
+    case 'dragover':
+    case 'mousemove':
+    case 'mouseout':
+    case 'mouseover':
+    case 'pointermove':
+    case 'pointerout':
+    case 'pointerover':
+    case 'scroll':
+    case 'toggle':
+    case 'touchmove':
+    case 'wheel':
+    // Not used by React but could be by user code:
+    // eslint-disable-next-line no-fallthrough
+    case 'mouseenter':
+    case 'mouseleave':
+    case 'pointerenter':
+    case 'pointerleave':
+      return ContinuousEventPriority
+    case 'message':
       throw new Error('Not Implement')
+    default:
+      return DefaultEventPriority
   }
 }

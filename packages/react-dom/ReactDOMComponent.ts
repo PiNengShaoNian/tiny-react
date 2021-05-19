@@ -1,5 +1,12 @@
 import { track } from './inputValueTracking'
 import { setTextContent } from './setTextContent'
+import {
+  initWrapperState as ReactDOMInputInitWrapperState,
+  getHostProps as ReactDOMInputGetHostProps,
+  postMountWrapper as ReactDOMInputPostMountWrapper,
+  updateWrapper as ReactDOMInputUpdateWrapper,
+} from './ReactDOMInput'
+import { setValueForStyles } from './CSSPropertyOperations'
 
 const STYLE = 'style'
 const CHILDREN = 'children'
@@ -15,6 +22,7 @@ const setInitialDOMProperties = (
     const nextProp = nextProps[propKey]
 
     if (propKey === STYLE) {
+      setValueForStyles(domElement as any, nextProp)
     } else if (propKey === CHILDREN) {
       if (typeof nextProp === 'string') {
         const canSetTextContent = tag !== 'textarea' || nextProp !== ''
@@ -42,11 +50,23 @@ export const setInitialProperties = (
   tag: string,
   rawProps: Object
 ) => {
-  setInitialDOMProperties(tag, domElement, rawProps)
+  let props: Object = rawProps
+  switch (tag) {
+    case 'input':
+      ReactDOMInputInitWrapperState(domElement, rawProps)
+      props = ReactDOMInputGetHostProps(domElement, rawProps)
+      break
+
+    default:
+      break
+  }
+
+  setInitialDOMProperties(tag, domElement, props)
 
   switch (tag) {
     case 'input':
       track(domElement as HTMLInputElement)
+      ReactDOMInputPostMountWrapper(domElement, rawProps)
       break
     case 'textarea':
     case 'option':
@@ -91,6 +111,8 @@ export const updateProperties = (
 
   switch (tag) {
     case 'input':
+      ReactDOMInputUpdateWrapper(domElement, nextRawProps)
+      break
     case 'textarea':
     case 'select':
       throw new Error('Not Implement')
