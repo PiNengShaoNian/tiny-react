@@ -246,3 +246,10 @@ export const getCurrentEventPriority = (): Lane => {
 
   return getEventPriority(currentEvent.type as any)
 }
+
+export const removeChild = (
+  parentInstance: HTMLElement,
+  child: HTMLElement | Text
+) => {
+  parentInstance.removeChild(child)
+}

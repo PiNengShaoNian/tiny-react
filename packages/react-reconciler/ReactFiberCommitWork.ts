@@ -1,4 +1,8 @@
-import { commitUpdate, UpdatePayload } from '../react-dom/ReactDOMHostConfig'
+import {
+  commitUpdate,
+  removeChild,
+  UpdatePayload,
+} from '../react-dom/ReactDOMHostConfig'
 import { Container } from '../react-dom/ReactDomRoot'
 import {
   BeforeMutationMask,
@@ -88,7 +92,15 @@ const commitPassiveUnmountEffects_begin = () => {
     if ((nextEffect.flags & ChildDeletion) !== NoFlags) {
       const deletions = fiber.deletions
       if (deletions !== null) {
-        throw new Error('Not Implement')
+        for (let i = 0; i < deletions.length; ++i) {
+          // const fiberToDelete = deletions[i]
+          // nextEffect = fiberToDelete
+          // commitPassiveUnmountEffectsInsideOfDeletedTree_begin(
+          //   fiberToDelete,
+          //   fiber
+          // )
+          throw new Error('Not Implement')
+        }
       }
 
       throw new Error('Not Implement')
@@ -113,6 +125,7 @@ const commitPassiveUnmountEffects_complete = () => {
     const sibling = fiber.sibling
     if (sibling !== null) {
       ensureCorrectReturnPointer(sibling, fiber.return!)
+      nextEffect = sibling
       return
     }
 
@@ -121,7 +134,8 @@ const commitPassiveUnmountEffects_complete = () => {
 }
 
 const commitHookEffectListUnmount = (flags: HookFlags, finishedWork: Fiber) => {
-  const updateQueue: FunctionComponentUpdateQueue | null = finishedWork.updateQueue as any
+  const updateQueue: FunctionComponentUpdateQueue | null =
+    finishedWork.updateQueue as any
 
   const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null
 
@@ -155,7 +169,8 @@ const commitPassiveUnmountOnFiber = (finishedWork: Fiber): void => {
 }
 
 const commitHookEffectListMount = (tag: number, finishedWork: Fiber): void => {
-  const updateQueue: FunctionComponentUpdateQueue | null = finishedWork.updateQueue as any
+  const updateQueue: FunctionComponentUpdateQueue | null =
+    finishedWork.updateQueue as any
   const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null
   if (lastEffect !== null) {
     const firstEffect = lastEffect.next
@@ -265,11 +280,134 @@ export const commitMutationEffects = (
   commitMutationEffects_begin(root)
 }
 
+const commitUnmount = (
+  finishedRoot: FiberRoot,
+  current: Fiber,
+  nearestMountedAncestor: Fiber
+): void => {
+  switch (current.tag) {
+    case HostComponent: {
+      //todo safelyDetachRef
+      return
+    }
+    default:
+      throw new Error('Not Implement')
+  }
+}
+
+/**
+ * 把以root为根节点的子fiber树unmount
+ * @param finishedRoot
+ * @param root
+ * @param nearestMountedAncestor
+ * @returns
+ */
+const commitNestedUnmounts = (
+  finishedRoot: FiberRoot,
+  root: Fiber,
+  nearestMountedAncestor: Fiber
+) => {
+  let node: Fiber = root
+
+  //下面的代码相当于dfs的循环版本
+  while (true) {
+    commitUnmount(finishedRoot, node, nearestMountedAncestor)
+
+    //如果该节点有子节点有子节点则一直往下走
+    if (node.child !== null) {
+      node.child.return = node
+      node = node.child
+      continue
+    }
+
+    if (node === root) return
+
+    //该层已经全部处理完，是时候返回上一层了
+    while (node.sibling === null) {
+      if (node.return === null || node.return === root) {
+        return
+      }
+
+      node = node.return
+    }
+
+    node.sibling.return = node.return
+    node = node.sibling
+  }
+}
+
+const unmountHostComponents = (
+  finishedRoot: FiberRoot,
+  current: Fiber,
+  nearestMountedAncestor: Fiber
+): void => {
+  let node: Fiber = current
+
+  let currentParentIsValid = false
+
+  let currentParent
+  let currentParentIsContainer
+
+  while (true) {
+    if (!currentParentIsValid) {
+      let parent = node.return
+
+      findParent: while (true) {
+        const parentStateNode = parent?.stateNode
+        switch (parent?.tag) {
+          case HostComponent:
+            currentParent = parentStateNode
+            currentParentIsContainer = false
+            break findParent
+          case HostRoot:
+            currentParent = parentStateNode.containerInfo
+            currentParentIsContainer = true
+            break findParent
+        }
+        parent = parent!.return
+      }
+
+      currentParentIsValid = true
+    }
+
+    if (node.tag === HostComponent || node.tag === HostText) {
+      commitNestedUnmounts(finishedRoot, node, nearestMountedAncestor)
+
+      if (currentParentIsContainer) {
+        throw new Error('Not Implement')
+      } else {
+        removeChild(currentParent, node.stateNode)
+      }
+    } else {
+      throw new Error('Not Implement')
+    }
+
+    if (node === current) {
+      return
+    }
+
+    throw new Error('Not Implement')
+  }
+}
+
+const detachFiberMutation = (fiber: Fiber) => {
+  //剪短return指针将结点从树中断开
+  const alternate = fiber.alternate
+  if (alternate !== null) {
+    alternate.return = null
+  }
+  fiber.return = null
+}
+
 const commitDeletion = (
   finishedRoot: FiberRoot,
   current: Fiber,
   nearestMountedAncestor: Fiber
-): void => {}
+): void => {
+  unmountHostComponents(finishedRoot, current, nearestMountedAncestor)
+
+  detachFiberMutation(current)
+}
 
 const isHostParent = (fiber: Fiber): boolean => {
   return fiber.tag === HostComponent || fiber.tag === HostRoot
@@ -446,7 +584,8 @@ const commitWork = (current: Fiber | null, finishedWork: Fiber): void => {
         const oldProps = current !== null ? current.memoizedProps : newProps
         const type = finishedWork.type
 
-        const updatePayload: null | UpdatePayload = finishedWork.updateQueue as any
+        const updatePayload: null | UpdatePayload =
+          finishedWork.updateQueue as any
 
         finishedWork.updateQueue = null
 
@@ -531,15 +670,18 @@ const commitMutationEffects_begin = (root: FiberRoot): void => {
   while (nextEffect !== null) {
     const fiber = nextEffect
 
-    //todo 删除fiber节点
-    // const deletions = fiber.deletions
-    // if (deletions !== null) {
-    //   for (let i = 0; i < deletions.length; ++i) {
-    //     const childToDelete = deletions[i]
+    // todo 删除fiber节点
+    const deletions = fiber.deletions
+    console.log({
+      deletions,
+    })
+    if (deletions !== null) {
+      for (let i = 0; i < deletions.length; ++i) {
+        const childToDelete = deletions[i]
 
-    //     commitDeletion(root, childToDelete, fiber)
-    //   }
-    // }
+        commitDeletion(root, childToDelete, fiber)
+      }
+    }
 
     const child = fiber.child
 

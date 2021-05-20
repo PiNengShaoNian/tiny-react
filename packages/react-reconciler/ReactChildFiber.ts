@@ -286,7 +286,16 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       )
 
       if (newFiber === null) {
-        throw new Error('Not Implement')
+        //没有复用该节点，比如下面的情况，前后的key不一致
+        /**
+         * {type: 'li', key: 1 }                   {type: 'li', key: 2 }
+         *                           删除第一个后
+         * {type: 'li', key: 2 }
+         */
+        if (oldFiber === null) {
+          oldFiber = nextOldFiber
+        }
+        break
       }
 
       if (shouldTrackSideEffects) {
