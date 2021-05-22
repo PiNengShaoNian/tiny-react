@@ -57,6 +57,13 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       return null
     }
 
+    let childToDelete = currentFirstChild
+
+    while (childToDelete !== null) {
+      deleteChild(returnFiber, childToDelete)
+      childToDelete = childToDelete.sibling
+    }
+
     return null
   }
 
@@ -245,7 +252,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
           const matchedFiber =
             existingChildren.get(
               newChild.key === null ? newIdx : newChild.key
-            ) || null
+            ) ?? null
 
           return updateElement(returnFiber, matchedFiber, newChild, lanes)
         }
@@ -371,8 +378,9 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
         }
 
         lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx)
+
         if (previousNewFiber === null) {
-          resultingFirstChild === newFiber
+          resultingFirstChild = newFiber
         } else {
           previousNewFiber.sibling = newFiber
         }
@@ -410,9 +418,6 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       }
     }
 
-    if (typeof newChild === 'string') {
-    }
-
     if (isArray(newChild)) {
       return reconcileChildrenArray(
         returnFiber,
@@ -420,6 +425,10 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
         newChild,
         lanes
       )
+    }
+
+    if (typeof newChild === 'string' || typeof newChild === 'number') {
+      throw new Error('Not Implement')
     }
 
     //newChild为空删除现有fiber节点

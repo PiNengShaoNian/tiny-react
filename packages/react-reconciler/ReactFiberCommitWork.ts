@@ -84,6 +84,80 @@ export const commitPassiveUnmountEffects = (firstChild: Fiber): void => {
   commitPassiveUnmountEffects_begin()
 }
 
+const commitPassiveUnmountInsideDeletedTreeOnFiber = (
+  current: Fiber,
+  nearestMountedAncestor: Fiber | null
+): void => {
+  switch (current.tag) {
+    case FunctionComponent:
+      throw new Error('Not Implement')
+
+    default:
+      break
+  }
+}
+
+const detachFiberAfterEffects = (fiber: Fiber) => {
+  const alternate = fiber.alternate
+  if (alternate !== null) {
+    fiber.alternate = null
+    detachFiberAfterEffects(alternate)
+  }
+
+  fiber.child = null
+  fiber.deletions = null
+  fiber.memoizedProps = null
+  fiber.memoizedState = null
+  fiber.pendingProps = null
+  fiber.sibling = null
+  fiber.stateNode = null
+  fiber.updateQueue = null
+}
+
+const commitPassiveUnmountEffectsInsideOfDeletedTree_complete = (
+  deletedSubtreeRoot: Fiber
+) => {
+  while (nextEffect !== null) {
+    const fiber = nextEffect
+    const sibling = fiber.sibling
+    const returnFiber = fiber.return
+
+    if (fiber === deletedSubtreeRoot) {
+      detachFiberAfterEffects(fiber)
+      nextEffect = null
+      return
+    }
+
+    if (sibling !== null) {
+      ensureCorrectReturnPointer(sibling, returnFiber!)
+      nextEffect = sibling
+      return
+    }
+
+    nextEffect = returnFiber
+  }
+}
+
+const commitPassiveUnmountEffectsInsideOfDeletedTree_begin = (
+  deletedSubtreeRoot: Fiber,
+  nearestMountedAncestor: Fiber | null
+) => {
+  while (nextEffect !== null) {
+    const fiber = nextEffect
+    commitPassiveUnmountInsideDeletedTreeOnFiber(fiber, nearestMountedAncestor)
+
+    const child = fiber.child
+    if (child !== null) {
+      ensureCorrectReturnPointer(child, fiber)
+      nextEffect = child
+    } else {
+      commitPassiveUnmountEffectsInsideOfDeletedTree_complete(
+        deletedSubtreeRoot
+      )
+    }
+  }
+}
+
 const commitPassiveUnmountEffects_begin = () => {
   while (nextEffect !== null) {
     const fiber = nextEffect
@@ -93,17 +167,36 @@ const commitPassiveUnmountEffects_begin = () => {
       const deletions = fiber.deletions
       if (deletions !== null) {
         for (let i = 0; i < deletions.length; ++i) {
-          // const fiberToDelete = deletions[i]
-          // nextEffect = fiberToDelete
-          // commitPassiveUnmountEffectsInsideOfDeletedTree_begin(
-          //   fiberToDelete,
-          //   fiber
-          // )
-          throw new Error('Not Implement')
+          const fiberToDelete = deletions[i]
+          nextEffect = fiberToDelete
+          commitPassiveUnmountEffectsInsideOfDeletedTree_begin(
+            fiberToDelete,
+            fiber
+          )
         }
+        const previousFiber = fiber.alternate
+
+        if (previousFiber !== null) {
+          let detachedChild = previousFiber.child
+          if (detachedChild !== null) {
+            previousFiber.child = null
+            do {
+              const detachedSibling: Fiber | null = detachedChild.sibling
+              detachedChild.sibling = null
+              detachedChild = detachedSibling
+            } while (detachedChild !== null)
+          }
+        }
+
+        nextEffect = fiber
       }
 
-      throw new Error('Not Implement')
+      if ((fiber.subtreeFlags & PassiveMask) !== NoFlags && child !== null) {
+        ensureCorrectReturnPointer(child, fiber)
+        nextEffect = child
+      } else {
+        commitPassiveUnmountEffects_complete()
+      }
     }
 
     if ((fiber.subtreeFlags & PassiveMask) !== NoFlags && child !== null) {
@@ -672,9 +765,6 @@ const commitMutationEffects_begin = (root: FiberRoot): void => {
 
     // todo 删除fiber节点
     const deletions = fiber.deletions
-    console.log({
-      deletions,
-    })
     if (deletions !== null) {
       for (let i = 0; i < deletions.length; ++i) {
         const childToDelete = deletions[i]

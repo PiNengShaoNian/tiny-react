@@ -30,6 +30,9 @@ export const TodoList = () => {
 
   const handleDeleteClick = (index: number) => {
     const next: TodoItem[] = [...todoList]
+
+    console.log({ index })
+
     next.splice(index, 1)
     setTodoList(next)
   }
