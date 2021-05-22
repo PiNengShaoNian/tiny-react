@@ -83,7 +83,7 @@ const updateDOMProperties = (domElement: Element, updatePayload: any[]) => {
     const propValue = updatePayload[i + 1]
 
     if (propKey === STYLE) {
-      throw new Error('Not Implement')
+      setValueForStyles(domElement as HTMLElement, propValue)
     } else if (propKey === CHILDREN) {
       setTextContent(domElement, propValue)
     } else {

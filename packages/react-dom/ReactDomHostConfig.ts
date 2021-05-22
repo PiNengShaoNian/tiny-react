@@ -161,7 +161,7 @@ const diffProperties = (
 
   let propKey
   let styleName
-  let styleUpdates = null
+  let styleUpdates: Record<string, any> | null = null
 
   for (propKey in lastProps) {
     //该循环只处理被删除的prop
@@ -194,7 +194,41 @@ const diffProperties = (
     }
 
     if (propKey === STYLE) {
-      throw new Error('Not Implement')
+      if (lastProp) {
+        for (styleName in lastProp) {
+          //处理删除的style
+          if (
+            lastProp.hasOwnProperty(styleName) &&
+            (!nextProp || !nextProp.hasOwnProperty(styleName))
+          ) {
+            if (!styleUpdates) {
+              styleUpdates = {}
+            }
+            styleUpdates[styleName] = ''
+          }
+        }
+
+        //处理新增或者更新的style
+        for (styleName in nextProp) {
+          if (
+            nextProp.hasOwnProperty(styleName) &&
+            lastProp[styleName] !== nextProp[styleName]
+          ) {
+            if (!styleUpdates) {
+              styleUpdates = {}
+            }
+            styleUpdates[styleName] = nextProp[styleName]
+          }
+        }
+      } else {
+        if (!styleUpdates) {
+          if (!updatePayload) {
+            updatePayload = []
+          }
+          updatePayload.push(propKey, styleUpdates)
+        }
+        styleUpdates = nextProp
+      }
     } else if (registrationNameDependencies.hasOwnProperty(propKey)) {
       if (!updatePayload) updatePayload = []
     } else if (propKey === CHILDREN) {
@@ -204,6 +238,10 @@ const diffProperties = (
     } else {
       ;(updatePayload = updatePayload || []).push(propKey, nextProp)
     }
+  }
+
+  if (styleUpdates) {
+    ;(updatePayload = updatePayload || []).push(STYLE, styleUpdates)
   }
 
   return updatePayload

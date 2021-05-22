@@ -20,11 +20,10 @@ export const TodoList = () => {
 
   const handleCompleteClick = (index: number) => {
     const next = [...todoList]
-    todoList[index] = {
+    next[index] = {
       ...todoList[index],
       status: true,
     }
-
     setTodoList(next)
   }
 
