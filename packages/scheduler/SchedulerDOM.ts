@@ -104,6 +104,7 @@ const advanceTimers = (currentTime: number) => {
 }
 
 const shouldYieldToHost = (): boolean => {
+  // console.log(getCurrentTime(), dealine)
   return getCurrentTime() >= dealine
 }
 
@@ -136,6 +137,11 @@ const workLoop = (hasTimeRemaining: number, initialTime: number) => {
   currentTask = peek(taskQueue) as any
 
   while (currentTask !== null) {
+    console.log(JSON.stringify(currentTask), {
+      currentTime,
+      callback: currentTask?.callback?.name ?? '',
+    })
+
     if (
       currentTask.expirationTime > currentTime &&
       (!hasTimeRemaining || shouldYieldToHost())
@@ -260,9 +266,14 @@ const unstable_scheduleCallback = (
   return newTask
 }
 
+const unstable_cancelCallback = (task: Task) => {
+  task.callback = null
+}
+
 export {
   getCurrentTime as unstable_now,
   unstable_scheduleCallback,
   NormalPriority as unstable_NormalPriority,
   shouldYieldToHost as unstable_shouldYield,
+  unstable_cancelCallback,
 }

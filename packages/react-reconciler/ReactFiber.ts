@@ -102,10 +102,10 @@ export const createWorkInProgress = (
 
   workInProgress.lanes = current.lanes
   workInProgress.updateQueue = current.updateQueue
-  // workInProgress.childLanes = current.childLanes
-  // workInProgress.flags = current.flags
+  workInProgress.childLanes = current.childLanes
+  workInProgress.flags = current.flags
   workInProgress.child = current.child
-  // workInProgress.memoizedProps = current.memoizedProps
+  workInProgress.memoizedProps = current.memoizedProps
   workInProgress.memoizedState = current.memoizedState
 
   return workInProgress

@@ -64,9 +64,13 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
     let child = completedWork.child
 
     while (child !== null) {
+      newChildLanes = mergeLanes(
+        newChildLanes,
+        mergeLanes(child.lanes, child.childLanes)
+      )
+
       subtreeFlags |= child.subtreeFlags
       subtreeFlags |= child.flags
-
       child.return = completedWork
 
       child = child.sibling
@@ -90,6 +94,7 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
     }
   }
 
+  completedWork.childLanes = newChildLanes
   return didBailout
 }
 

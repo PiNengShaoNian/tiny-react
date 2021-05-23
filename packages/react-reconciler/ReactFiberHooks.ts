@@ -1,6 +1,7 @@
 import { Dispatcher, Fiber } from './ReactInternalTypes'
 import { ReactSharedInternals } from '../shared/ReactSharedInternals'
 import {
+  isInterleavedUpdate,
   requestEventTime,
   requestUpdateLane,
   scheduleUpdateOnFiber,
@@ -23,6 +24,7 @@ import {
   Passive as HookPassive,
   HasEffect as HookHasEffect,
 } from './ReactHookEffectTags'
+import { pushInterleavedQueue } from './ReactFiberInterleavedUpdates'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 type BasicStateAction<S> = ((a: S) => S) | S
@@ -83,6 +85,7 @@ export type UpdateQueue<S, A> = {
   lastRenderedReducer: ((s: S, a: A) => S) | null
   lastRenderedState: S | null
   dispatch: null | ((a: A) => any)
+  interleaved: Update<S, A> | null
 }
 
 const dispatchAction = <S, A>(
@@ -106,16 +109,25 @@ const dispatchAction = <S, A>(
     //todo
     throw new Error('Not Implement')
   } else {
-    const pending = queue.pending
-
-    if (pending === null) {
-      update.next = update
+    if (isInterleavedUpdate(fiber, lane)) {
+      const interleaved = queue.interleaved
+      if (interleaved === null) {
+        update.next = update
+        pushInterleavedQueue(queue)
+      } else {
+        update.next = interleaved.next
+      }
+      queue.interleaved = update
     } else {
-      update.next = pending.next
-      pending.next = update
+      const pending = queue.pending
+      if (pending === null) {
+        update.next = update
+      } else {
+        update.next = pending.next
+        pending.next = update
+      }
+      queue.pending = update
     }
-
-    queue.pending = update
 
     if (
       fiber.lanes === NoLanes &&
@@ -160,15 +172,11 @@ const mountState = <S>(
     lastRenderedReducer: basicStateReducer,
     lastRenderedState: initialState,
     dispatch: null,
+    interleaved: null,
   })
 
-  const dispatch: Dispatch<
-    BasicStateAction<S>
-  > = (queue.dispatch = dispatchAction.bind(
-    null,
-    currentlyRenderingFiber,
-    queue
-  ) as any)
+  const dispatch: Dispatch<BasicStateAction<S>> = (queue.dispatch =
+    dispatchAction.bind(null, currentlyRenderingFiber, queue) as any)
 
   return [hook.memoizedState, dispatch]
 }
@@ -462,7 +470,8 @@ const pushEffect = (
     next: null as any,
   }
 
-  let componentUpdateQueue: null | FunctionComponentUpdateQueue = currentlyRenderingFiber.updateQueue as any
+  let componentUpdateQueue: null | FunctionComponentUpdateQueue =
+    currentlyRenderingFiber.updateQueue as any
 
   if (componentUpdateQueue === null) {
     componentUpdateQueue = {

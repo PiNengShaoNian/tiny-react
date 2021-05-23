@@ -45,11 +45,12 @@ import { Fiber, FiberRoot } from './ReactInternalTypes'
 import { LegacyRoot } from './ReactRootTags'
 import { ConcurrentMode, NoMode } from './ReactTypeOfMode'
 import { HostRoot } from './ReactWorkTags'
-import { now, shouldYield } from './Scheduler'
+import { cancelCallback, now, shouldYield } from './Scheduler'
 import {
   scheduleCallback,
   NormalPriority as NormalSchedulerPriority,
 } from './Scheduler'
+import { enqueueInterleavedUpdates } from './ReactFiberInterleavedUpdates'
 
 type ExecutionContext = number
 export const NoContext = /*             */ 0b000000
@@ -141,10 +142,13 @@ const performUnitOfWork = (unitOfWork: Fiber): void => {
  * @param root 新一轮更新的FiberRoot
  */
 const prepareFreshStack = (root: FiberRoot, lanes: Lanes) => {
+  root.finishedWork = null
+
   workInProgressRoot = root
   //创建workInProgress的HostRoot其props为null
   workInProgress = createWorkInProgress(root.current, null)
   workInProgressRootRenderLanes = subtreeRenderLanes = lanes
+  enqueueInterleavedUpdates()
 }
 
 const flushPassiveEffectsImpl = () => {
@@ -183,7 +187,7 @@ const renderRootSync = (root: FiberRoot, lanes: Lanes) => {
   const prevExecutionContext = executionContext
   executionContext |= RenderContext
 
-  if (workInProgressRoot !== root) {
+  if (workInProgressRoot !== root || workInProgressRootRenderLanes !== lanes) {
     prepareFreshStack(root, lanes)
   }
 
@@ -265,6 +269,8 @@ const commitRootImpl = (root: FiberRoot): null => {
     rootWithPendingPassiveEffects = root
   }
 
+  ensureRootIsScheduled(root, now())
+
   return null
 }
 
@@ -326,7 +332,15 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
   }
 
   if (existingCallbackNode !== null) {
-    throw new Error('Not Implement')
+    //取消现存的callback,然后调度一个新的
+    console.log(!!(existingCallbackNode as any).callback)
+    try {
+      throw new Error()
+    } catch (e) {
+      console.log(e)
+    }
+    cancelCallback(existingCallbackNode as any)
+    // throw new Error('Not Implement')
   }
 
   //调度一个新回调
@@ -338,6 +352,7 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
       scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root))
     }
 
+    debugger
     scheduleMicrotask(flushSyncCallbacks)
     newCallbackNode = null
   } else {
@@ -385,6 +400,7 @@ const performConcurrentWorkOnRoot = (
     return null
   }
 
+  console.log('enable time slicing', shouldTimeSlice(root, lanes))
   const exitStatus =
     shouldTimeSlice(root, lanes) && !didTimeout
       ? renderRootConcurrent(root, lanes)
@@ -419,6 +435,9 @@ const finishConcurrentRender = (
 }
 
 const workLoopConcurrent = () => {
+  if (shouldYield()) {
+    console.log('yield')
+  }
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress)
   }
@@ -518,7 +537,7 @@ export const scheduleUpdateOnFiber = (
   markRootUpdated(root, lane, eventTime)
 
   if (root === workInProgressRoot) {
-    throw new Error('Not Implement')
+    // throw new Error('Not Implement')
   }
 
   if (lane === SyncLane) {
@@ -534,7 +553,13 @@ export const scheduleUpdateOnFiber = (
       performSyncWorkOnRoot(root)
     } else {
       ensureRootIsScheduled(root, eventTime)
-      // throw new Error('Not Implement')
+
+      if (
+        executionContext === NoContext &&
+        (fiber.mode & ConcurrentMode) === NoMode
+      ) {
+        throw new Error('Not Implement')
+      }
     }
   } else {
     ensureRootIsScheduled(root, eventTime)
@@ -613,4 +638,8 @@ export const requestUpdateLane = (fiber: Fiber): Lane => {
   const eventLane: Lane = getCurrentEventPriority()
 
   return eventLane
+}
+
+export const isInterleavedUpdate = (fiber: Fiber, lane: Lane): boolean => {
+  return workInProgressRoot !== null && (fiber.mode & ConcurrentMode) !== NoMode
 }
