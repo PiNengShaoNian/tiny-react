@@ -13,11 +13,13 @@ import {
   mergeLanes,
   NoLane,
   NoLanes,
+  removeLanes,
 } from './ReactFiberLane'
 import { markWorkInProgressReceivedUpdate } from './ReactFiberBeginWork'
 import {
   Flags as FiberFlags,
   Passive as PassiveEffect,
+  Update as UpdateEffect,
 } from './ReactFiberFlags'
 import {
   HookFlags,
@@ -109,6 +111,12 @@ const dispatchAction = <S, A>(
     //todo
     throw new Error('Not Implement')
   } else {
+    // try {
+    //   throw new Error('beforeisInterleavedUpdate stack info')
+    // } catch (e) {
+    //   console.log(e)
+    // }
+    // console.log('beforeisInterleavedUpdate', fiber, lane)
     if (isInterleavedUpdate(fiber, lane)) {
       const interleaved = queue.interleaved
       if (interleaved === null) {
@@ -307,7 +315,7 @@ const updateReducer = <S, I, A>(
          * 之前的 update和state就是新的baseUpdate和baseState
          */
 
-        throw new Error('Not Implement')
+        // throw new Error('Not Implement')
 
         const clone: Update<S, A> = {
           lane: updateLane,
@@ -362,6 +370,8 @@ const updateReducer = <S, I, A>(
     queue.lastRenderedState = newState
   }
 
+  console.log(JSON.stringify(hook, ['baseState']))
+
   const dispatch: Dispatch<A> = queue.dispatch!
   return [hook.memoizedState, dispatch]
 }
@@ -386,6 +396,8 @@ export const renderWithHooks = <Props, SecondArg>(
   //Function组件每次update是都会将新的effect挂载在上面，如果
   //不清除那么老的effect会一直存在并被调用
   workInProgress.updateQueue = null
+  workInProgress.memoizedState = null
+  workInProgress.lanes = NoLanes
 
   ReactCurrentDispatcher.current =
     current === null || current.memoizedState === null
@@ -396,6 +408,13 @@ export const renderWithHooks = <Props, SecondArg>(
 
   renderLanes = NoLanes
   currentlyRenderingFiber = null as any
+
+  /**
+   * 完成该Function组建后将currentHook,workInProgressHook置为null,否则会导致下次更新
+   * 时的workInProgress的memoizedState为null导致后续的更新异常
+   */
+  currentHook = null
+  workInProgressHook = null
 
   return children
 }
@@ -526,4 +545,15 @@ const HooksDispatcherOnMount: Dispatcher = {
 const HooksDispatcherOnUpdate: Dispatcher = {
   useState: updateState,
   useEffect: updateEffect,
+}
+
+export const bailoutHooks = (
+  current: Fiber,
+  workInProgress: Fiber,
+  lanes: Lanes
+) => {
+  workInProgress.updateQueue = current.updateQueue
+  workInProgress.flags &= ~(PassiveEffect | UpdateEffect)
+
+  current.lanes = removeLanes(current.lanes, lanes)
 }

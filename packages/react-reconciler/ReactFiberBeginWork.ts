@@ -4,7 +4,7 @@ import {
   mountChildFibers,
   reconcileChildFibers,
 } from './ReactChildFiber'
-import { renderWithHooks } from './ReactFiberHooks'
+import { bailoutHooks, renderWithHooks } from './ReactFiberHooks'
 import { Fiber } from './ReactInternalTypes'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
@@ -35,8 +35,7 @@ const updateFunctionComponent = (
   )
 
   if (current !== null && !didReceiveUpdate) {
-    // throw new Error('Not Implement')
-    current.lanes = NoLanes
+    bailoutHooks(current, workInProgress, renderLanes)
     return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes)
   }
 

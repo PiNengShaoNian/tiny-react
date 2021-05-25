@@ -172,6 +172,7 @@ const flushPassiveEffectsImpl = () => {
 
 export const flushPassiveEffects = (): boolean => {
   if (rootWithPendingPassiveEffects !== null) {
+    console.log('flushPassiveEffects')
     try {
       return flushPassiveEffectsImpl()
     } finally {
@@ -210,6 +211,7 @@ const commitRootImpl = (root: FiberRoot): null => {
     // throw new Error('Not Implement')
   } while (rootWithPendingPassiveEffects !== null)
 
+  console.log('commitRoot')
   const finishedWork = root.finishedWork
 
   if (finishedWork === null) return null
@@ -333,12 +335,7 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
 
   if (existingCallbackNode !== null) {
     //取消现存的callback,然后调度一个新的
-    console.log(!!(existingCallbackNode as any).callback)
-    try {
-      throw new Error()
-    } catch (e) {
-      console.log(e)
-    }
+    console.log('cancel', JSON.stringify(existingCallbackNode))
     cancelCallback(existingCallbackNode as any)
     // throw new Error('Not Implement')
   }
@@ -352,7 +349,6 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
       scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root))
     }
 
-    debugger
     scheduleMicrotask(flushSyncCallbacks)
     newCallbackNode = null
   } else {
@@ -400,7 +396,6 @@ const performConcurrentWorkOnRoot = (
     return null
   }
 
-  console.log('enable time slicing', shouldTimeSlice(root, lanes))
   const exitStatus =
     shouldTimeSlice(root, lanes) && !didTimeout
       ? renderRootConcurrent(root, lanes)
@@ -435,9 +430,6 @@ const finishConcurrentRender = (
 }
 
 const workLoopConcurrent = () => {
-  if (shouldYield()) {
-    console.log('yield')
-  }
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress)
   }
@@ -461,6 +453,8 @@ const renderRootConcurrent = (root: FiberRoot, lanes: Lanes) => {
   executionContext = prevExecutionContext
 
   if (workInProgress !== null) {
+    //还有剩余的工作
+    console.log('yield ', RootIncomplete, workInProgressRoot)
     return RootIncomplete
   } else {
     workInProgressRoot = null
@@ -641,5 +635,9 @@ export const requestUpdateLane = (fiber: Fiber): Lane => {
 }
 
 export const isInterleavedUpdate = (fiber: Fiber, lane: Lane): boolean => {
+  console.log('isInterleavedUpdate------------', {
+    workInProgressRoot,
+    mode: fiber.mode & ConcurrentMode,
+  })
   return workInProgressRoot !== null && (fiber.mode & ConcurrentMode) !== NoMode
 }

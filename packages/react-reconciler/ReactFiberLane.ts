@@ -199,3 +199,7 @@ export const markRootFinished = (root: FiberRoot, remainingLanes: Lanes) => {
     lanes &= ~lane
   }
 }
+
+export const removeLanes = (set: Lanes, subset: Lanes | Lane): Lanes => {
+  return set & ~subset
+}

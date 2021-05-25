@@ -137,10 +137,10 @@ const workLoop = (hasTimeRemaining: number, initialTime: number) => {
   currentTask = peek(taskQueue) as any
 
   while (currentTask !== null) {
-    console.log(JSON.stringify(currentTask), {
-      currentTime,
-      callback: currentTask?.callback?.name ?? '',
-    })
+    // console.log(JSON.stringify(currentTask), {
+    //   currentTime,
+    //   callback: currentTask?.callback?.name ?? '',
+    // })
 
     if (
       currentTask.expirationTime > currentTime &&
