@@ -152,8 +152,14 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
     if (current !== null) {
       const oldIndex = current.index
+
+      //更新前有以下数组元素1->2
+      //更新后他们的位置交换变为2 -> 1
+      //这时1元素的oldIndex(0)会小于lastPlacedIndex(和前一轮2元素的index相同也就是1)
+      //这是意味着1元素的位置需要改变了，所以将他打赏Placement标签，待会会将它重新插入dom树
       if (oldIndex < lastPlacedIndex) {
-        throw new Error('Not Implement')
+        newFiber.flags |= Placement
+        return lastPlacedIndex
       } else {
         return oldIndex
       }

@@ -14,6 +14,7 @@ import {
   Placement,
   Update,
   Passive,
+  PlacementAndUpdate,
 } from './ReactFiberFlags'
 import { FunctionComponentUpdateQueue } from './ReactFiberHooks'
 import {
@@ -641,6 +642,7 @@ const commitPlacement = (finishedWork: Fiber): void => {
 
   if (parentFiber.flags & ContentReset) {
     //todo
+    throw new Error('Not Implement')
   }
 
   const before = getHostSibling(finishedWork)
@@ -729,6 +731,13 @@ const commitMutationEffectsOnFiber = (
       break
     }
     case 0: {
+      break
+    }
+    case PlacementAndUpdate: {
+      commitPlacement(finishedWork)
+      finishedWork.flags &= ~Placement
+      const current = finishedWork.alternate
+      commitWork(current, finishedWork)
       break
     }
     case Update: {

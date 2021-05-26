@@ -370,8 +370,6 @@ const updateReducer = <S, I, A>(
     queue.lastRenderedState = newState
   }
 
-  console.log(JSON.stringify(hook, ['baseState']))
-
   const dispatch: Dispatch<A> = queue.dispatch!
   return [hook.memoizedState, dispatch]
 }

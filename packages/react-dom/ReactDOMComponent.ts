@@ -7,6 +7,7 @@ import {
   updateWrapper as ReactDOMInputUpdateWrapper,
 } from './ReactDOMInput'
 import { setValueForStyles } from './CSSPropertyOperations'
+import { setValueForProperty } from './DOMPropertyOperations'
 
 const STYLE = 'style'
 const CHILDREN = 'children'
@@ -34,6 +35,7 @@ const setInitialDOMProperties = (
         setTextContent(domElement, nextProp + '')
       }
     } else if (nextProp !== null) {
+      setValueForProperty(domElement, propKey, nextProp)
       //todo
     }
   }
