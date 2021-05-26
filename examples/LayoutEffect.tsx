@@ -1,5 +1,5 @@
 import { CSSProperties } from 'react'
-import React, { useState, useEffect } from '../packages/react'
+import React, { useState, useEffect, useLayoutEffect } from '../packages/react'
 
 const shuffleArray = (array: number[]) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -42,7 +42,7 @@ const colors = [
 export const LayoutEffectDemo = () => {
   const [list, setList] = useState(Array.from({ length: 25 }, (_, i) => i))
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!previousLayoutInfo[0]) return
     const currentLayoutInfo: DOMRect[] = Array.from({ length: 25 })
     const gridItems = document.querySelectorAll<HTMLDivElement>('.grid-item')
@@ -133,4 +133,7 @@ const styles: { [key: string]: CSSProperties } = {
   },
 }
 
-const gridItemStyles = colors.map((v) => ({ ...styles.gridItem, background: v }))
+const gridItemStyles = colors.map((v) => ({
+  ...styles.gridItem,
+  background: v,
+}))

@@ -25,3 +25,11 @@ export const useEffect = (
   const dispatcher = resolveDispatcher()
   return dispatcher.useEffect(create, deps)
 }
+
+export const useLayoutEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+): void => {
+  const dispatcher = resolveDispatcher()
+  return dispatcher.useLayoutEffect(create, deps)
+}

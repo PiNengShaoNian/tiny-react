@@ -4,4 +4,5 @@ export type HookFlags = number
 export const HasEffect = /* */ 0b001
 
 //表示了effect触发是所处的阶段
+export const Layout = /*    */ 0b010
 export const Passive = /*   */ 0b100

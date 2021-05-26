@@ -18,6 +18,7 @@ import {
 import { markWorkInProgressReceivedUpdate } from './ReactFiberBeginWork'
 import {
   Flags as FiberFlags,
+  Flags,
   Passive as PassiveEffect,
   Update as UpdateEffect,
 } from './ReactFiberFlags'
@@ -25,6 +26,7 @@ import {
   HookFlags,
   Passive as HookPassive,
   HasEffect as HookHasEffect,
+  Layout as HookLayout,
 } from './ReactHookEffectTags'
 import { pushInterleavedQueue } from './ReactFiberInterleavedUpdates'
 
@@ -535,14 +537,31 @@ const mountEffect = (
   return mountEffectImpl(PassiveEffect, HookPassive, create, deps)
 }
 
+const mountLayoutEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+) => {
+  let fiberFlags: Flags = UpdateEffect
+  return mountEffectImpl(fiberFlags, HookLayout, create, deps)
+}
+
+const updateLayoutEffect = (
+  create: () => (() => void) | void,
+  deps: unknown[] | void | null
+) => {
+  return updateEffectImpl(UpdateEffect, HookLayout, create, deps)
+}
+
 const HooksDispatcherOnMount: Dispatcher = {
   useState: mountState,
   useEffect: mountEffect,
+  useLayoutEffect: mountLayoutEffect,
 }
 
 const HooksDispatcherOnUpdate: Dispatcher = {
   useState: updateState,
   useEffect: updateEffect,
+  useLayoutEffect: updateLayoutEffect,
 }
 
 export const bailoutHooks = (

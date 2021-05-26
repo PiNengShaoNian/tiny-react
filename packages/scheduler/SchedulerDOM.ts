@@ -104,7 +104,6 @@ const advanceTimers = (currentTime: number) => {
 }
 
 const shouldYieldToHost = (): boolean => {
-  // console.log(getCurrentTime(), dealine)
   return getCurrentTime() >= dealine
 }
 
@@ -137,11 +136,6 @@ const workLoop = (hasTimeRemaining: number, initialTime: number) => {
   currentTask = peek(taskQueue) as any
 
   while (currentTask !== null) {
-    // console.log(JSON.stringify(currentTask), {
-    //   currentTime,
-    //   callback: currentTask?.callback?.name ?? '',
-    // })
-
     if (
       currentTask.expirationTime > currentTime &&
       (!hasTimeRemaining || shouldYieldToHost())

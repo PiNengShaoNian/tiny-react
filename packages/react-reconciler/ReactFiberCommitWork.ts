@@ -15,6 +15,7 @@ import {
   Update,
   Passive,
   PlacementAndUpdate,
+  LayoutMask,
 } from './ReactFiberFlags'
 import { FunctionComponentUpdateQueue } from './ReactFiberHooks'
 import {
@@ -24,10 +25,12 @@ import {
   insertBefore,
   insertInContainerBefore,
 } from './ReactFiberHostConfig'
+import { Lanes } from './ReactFiberLane'
 import {
   HookFlags,
   HasEffect as HookHasEffect,
   Passive as HookPassive,
+  Layout as HookLayout,
 } from './ReactHookEffectTags'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import {
@@ -654,21 +657,97 @@ const commitPlacement = (finishedWork: Fiber): void => {
   }
 }
 
+const commitLayoutEffectOnFiber = (
+  finishedRoot: FiberRoot,
+  current: Fiber | null,
+  finishedWork: Fiber,
+  committedLanes: Lanes
+): void => {
+  if ((finishedWork.flags & Update) !== NoFlags) {
+    switch (finishedWork.tag) {
+      case FunctionComponent: {
+        commitHookEffectListMount(HookLayout | HookHasEffect, finishedWork)
+        break
+      }
+      case HostComponent: {
+        //todo
+
+        // const instance: Element = finishedWork.stateNode
+        // if (current !== null && finishedWork.flags & Update) {
+        //   const type = finishedWork.type
+        //   const props = finishedWork.memoizedProps
+        //   commitMount(instance, type, props, finishedWork)
+        // }
+
+        break
+      }
+      default:
+        throw new Error('Not Implement')
+    }
+  }
+}
+
+const commitLayoutMountEffects_complete = (
+  subtreeRoot: Fiber,
+  root: FiberRoot,
+  committedLanes: Lanes
+) => {
+  while (nextEffect !== null) {
+    const fiber = nextEffect
+
+    if ((fiber.flags & LayoutMask) !== NoFlags) {
+      const current = fiber.alternate
+      commitLayoutEffectOnFiber(root, current, fiber, committedLanes)
+    }
+
+    if (fiber === subtreeRoot) {
+      nextEffect = null
+      return
+    }
+
+    const sibling = fiber.sibling
+    if (sibling !== null) {
+      ensureCorrectReturnPointer(sibling, fiber.return as any)
+      nextEffect = sibling
+      return
+    }
+    nextEffect = fiber.return
+  }
+}
+
+const commitLayoutEffects_begin = (
+  subtreeRoot: Fiber,
+  root: FiberRoot,
+  committedLanes: Lanes
+) => {
+  while (nextEffect !== null) {
+    const fiber = nextEffect
+    const firstChild = fiber.child
+
+    if ((fiber.subtreeFlags & LayoutMask) !== NoFlags && firstChild !== null) {
+      ensureCorrectReturnPointer(firstChild, fiber)
+      nextEffect = firstChild
+    } else {
+      commitLayoutMountEffects_complete(subtreeRoot, root, committedLanes)
+    }
+  }
+}
+
 export const commitLayoutEffects = (
   finishedWork: Fiber,
-  root: FiberRoot
+  root: FiberRoot,
 ): void => {
   nextEffect = finishedWork
 
   //todo
-  //   commitLayoutEffects_begin(finishedWork, root)
+  commitLayoutEffects_begin(finishedWork, root, 0)
 }
 
 const commitWork = (current: Fiber | null, finishedWork: Fiber): void => {
   switch (finishedWork.tag) {
     case FunctionComponent:
-      // commitHookEffectListUnmount()
-      throw new Error('Not Implement')
+      commitHookEffectListUnmount(HookLayout | HookHasEffect, finishedWork)
+      // throw new Error('Not Implement')
 
       return
     case HostComponent: {

@@ -138,4 +138,8 @@ export type Dispatcher = {
     create: () => (() => void) | void,
     deps: unknown[] | void | null
   ): void
+  useLayoutEffect(
+    create: () => (() => void) | void,
+    deps: unknown[] | void | null
+  ): void
 }

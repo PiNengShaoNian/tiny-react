@@ -172,7 +172,6 @@ const flushPassiveEffectsImpl = () => {
 
 export const flushPassiveEffects = (): boolean => {
   if (rootWithPendingPassiveEffects !== null) {
-    console.log('flushPassiveEffects')
     try {
       return flushPassiveEffectsImpl()
     } finally {
@@ -635,9 +634,5 @@ export const requestUpdateLane = (fiber: Fiber): Lane => {
 }
 
 export const isInterleavedUpdate = (fiber: Fiber, lane: Lane): boolean => {
-  console.log('isInterleavedUpdate------------', {
-    workInProgressRoot,
-    mode: fiber.mode & ConcurrentMode,
-  })
   return workInProgressRoot !== null && (fiber.mode & ConcurrentMode) !== NoMode
 }
