@@ -1,10 +1,14 @@
 import { REACT_ELEMENT_TYPE } from '../shared/ReactSymbols'
 import { Key } from '../shared/ReactTypes'
 
-class ReactElement<P = any, T = any> {
-  $$typeof: symbol = REACT_ELEMENT_TYPE
-  constructor(public type: T, public key: Key | null = null, public props: P) {}
+type ReactElement = {
+  $$typeof: Symbol
+  type: any
+  key: Key | null
+  props: any
 }
+
+const hasOwnProperty = Object.prototype.hasOwnProperty
 
 const RESERVED_PROPS = {
   key: true,
@@ -17,11 +21,11 @@ export function createElement(
   ...children: any[]
 ): ReactElement {
   const props: Record<string, any> = {}
-  const key: Key | null = config?.key ?? null
+  let key: Key | null = null
 
   for (const propName in config) {
     if (
-      config.hasOwnProperty(propName) &&
+      hasOwnProperty.call(config, propName) &&
       !RESERVED_PROPS.hasOwnProperty(propName)
     ) {
       props[propName] = config[propName]
@@ -37,11 +41,22 @@ export function createElement(
     }
   }
 
+  if (config?.key !== undefined) {
+    key = '' + config?.key
+  }
+
   if (children.length === 1) {
     props.children = children[0]
   } else if (children.length > 1) {
     props.children = children
   }
 
-  return new ReactElement(type, key, props)
+  const element: ReactElement = {
+    $$typeof: REACT_ELEMENT_TYPE,
+    type: type,
+    key: key,
+    props,
+  }
+
+  return element
 }

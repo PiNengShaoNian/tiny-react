@@ -9,3 +9,7 @@ import { render } from './ReactDOMLegacy'
 setBatchingImplementation(discreteUpdates, batchedEventUpdates)
 
 export { createRoot, render }
+export default {
+  createRoot,
+  render,
+}

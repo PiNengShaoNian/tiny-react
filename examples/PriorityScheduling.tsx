@@ -22,7 +22,7 @@ export const PriorityScheduling = () => {
     <div>
       <button onClick={onClick}>增加2</button>
       <div>
-        {Array.from(new Array(20000)).map((v, index) => (
+        {Array.from(new Array(10000)).map((v, index) => (
           <span key={index}>{count}</span>
         ))}
       </div>
