@@ -109,6 +109,12 @@ const addTrappedEventListener = (
   }
 }
 
+/**
+ * 在EventTarget注册一个事件
+ * @param domEventName 事件名称
+ * @param isCapturePhaseListener 是否为捕获阶段的事件 
+ * @param target container
+ */
 const listenToNativeEvent = (
   domEventName: DOMEventName,
   isCapturePhaseListener: boolean,
@@ -128,6 +134,10 @@ const listenToNativeEvent = (
   )
 }
 
+/**
+ * 将所有支持的事件在container上全都注册上
+ * @param rootContainerElement container
+ */
 export const listenToAllSupportedEvents = (
   rootContainerElement: EventTarget
 ) => {
@@ -169,8 +179,6 @@ const extractEvents = (
   const shouldProcessPolyfillPlugins =
     (eventSystemFlags & SHOULD_NOT_PROCESS_POLYFILL_EVENT_PLUGINS) === 0
 
-  //我们不处理这些事件，直到我们处于事件的冒泡阶段
-  //这也为这我们不再捕获阶段，
   if (shouldProcessPolyfillPlugins) {
     ChangeEventPlugin.extractEvents(
       dispatchQueue,

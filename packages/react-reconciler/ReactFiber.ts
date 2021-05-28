@@ -45,7 +45,7 @@ class FiberNode {
 /**
  *
  * @param tag 标志着该fiber树是以什么模式创建的
- * @returns 返回一个以HostRoot为tag创建的fiber节点(表示fiber树根节点)
+ * @returns 返回一个以HostRoot为tag的fiber节点(表示一颗fiber树的根节点)
  */
 export const createHostRootFiber = (tag: RootTag): Fiber => {
   let mode
@@ -59,6 +59,14 @@ export const createHostRootFiber = (tag: RootTag): Fiber => {
   return new FiberNode(HostRoot, null, null, mode)
 }
 
+/**
+ * 创建一个fiber节点
+ * @param tag 
+ * @param pendingProps 
+ * @param key 
+ * @param mode 
+ * @returns 
+ */
 export const createFiber = (
   tag: WorkTag,
   pendingProps: unknown,

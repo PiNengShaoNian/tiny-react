@@ -300,11 +300,24 @@ export const performSyncWorkOnRoot = (root: FiberRoot) => {
   return null
 }
 
+/**
+ * 用这个函数去调度一个任务，对于一个Root同时只能存在一个task,如果在调度一个任务时
+ * 发现已经存在了一个任务我们会检查他的优先级，确保他的优先级是小于等于当前调度的任务的
+ * @param root FiberRoot
+ * @param currentTime 当前任务创建时的时间
+ * @returns 
+ */
 const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
+  //是否已有任务节点存在，该节点为上次调度时Scheduler返回的任务节点,如果没有则为null
   const existingCallbackNode = root.callbackNode
 
+  /**
+   * 检查是否某些lane上的任务已经过期了如果过期了把他们标记为过期，
+   * 然后接下来就能进行他们的工作
+   */
   markStarvedLanesAsExpired(root, currentTime)
 
+  //获得该次任务的优先级
   const nextLanes = getNextLanes(
     root,
     root === workInProgressRoot ? workInProgressRootRenderLanes : NoLanes
@@ -332,9 +345,10 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
     return
   }
 
+  //能走到着说明该次更新的的优先级一定大于现存任务的优先级
+  //如果有现存任务就可以直接取消他，让他待会在被重新调度执行
   if (existingCallbackNode !== null) {
     //取消现存的callback,然后调度一个新的
-    console.log('cancel', JSON.stringify(existingCallbackNode))
     cancelCallback(existingCallbackNode as any)
     // throw new Error('Not Implement')
   }
@@ -342,15 +356,21 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
   //调度一个新回调
   let newCallbackNode
   if (newCallbackPriority === SyncLane) {
+    //将同步任务全都放到一个队列中，然后注册一个微任务待会把他们全部一同执行了
+    //这就是为什么Legacy模式中一个click事件内的多次setState
+    //导致多次scheduleUpdateOnFiber但也只会渲染一次的原因
     if (root.tag === LegacyRoot) {
       scheduleLegacySyncCallback(performSyncWorkOnRoot.bind(null, root))
     } else {
       scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root))
     }
 
+    //注册一个微任务
     scheduleMicrotask(flushSyncCallbacks)
+    //同步任务不仅过Scheduler模块，所以callbackNode一直都不存在东西
     newCallbackNode = null
   } else {
+    //不是同步任务，通过scheduler模块调度他
     let schedulerPriorityLevel
     switch (lanesToEventPriority(nextLanes)) {
       case DefaultEventPriority:
@@ -463,6 +483,13 @@ const renderRootConcurrent = (root: FiberRoot, lanes: Lanes) => {
   }
 }
 
+/**
+ * 将该节点上的更新的优先级冒泡到HostRoot
+在冒泡的过程中不断更新路径上fiber节点的lanes和childLanes
+ * @param sourceFiber 产生更新的节点 
+ * @param lane 该更新的优先级
+ * @returns 
+ */
 const markUpdateLaneFromFiberToRoot = (
   sourceFiber: Fiber,
   lane: Lane
@@ -521,6 +548,8 @@ export const scheduleUpdateOnFiber = (
   lane: Lane,
   eventTime: number
 ): FiberRoot | null => {
+  //将该节点上的更新的优先级冒泡到HostRoot
+  //在冒泡的过程中不断更新路径上fiber节点的lanes和childLanes
   const root = markUpdateLaneFromFiberToRoot(fiber, lane)
 
   if (root === null) {
@@ -535,7 +564,7 @@ export const scheduleUpdateOnFiber = (
 
   if (lane === SyncLane) {
     if (
-      //检查是是否该调用是否处于unbatchedUpdates中
+      //检查是是否该调用是否处于unbatchedUpdates中，调用ReactDOM.render是会打上该标记
       (executionContext & LegacyUnbatchedContext) !== NoContext &&
       //检查是否以及处于渲染中
       (executionContext & (RenderContext | CommitContext)) === NoContext
@@ -613,21 +642,33 @@ export const unbatchedUpdates = <A, R>(fn: (a: A) => R, a: A): R => {
   }
 }
 
+/**
+ * 更具fiber所处的mode获得该次更新的优先级
+ * @param fiber 
+ * @returns 返回该次更新的优先级
+ */
 export const requestUpdateLane = (fiber: Fiber): Lane => {
   const mode = fiber.mode
 
+  //如果不处于ConcurrentMode，不管三七二十一直接返回SyncLane
   if ((mode & ConcurrentMode) === NoMode) return SyncLane
   else if ((executionContext & RenderContext) !== NoContext) {
     throw new Error('Not Implement')
   }
 
-  // throw new Error('Not Implement')
+  /**
+   * 不同模块产生的优先级能互动的桥梁比如ReactDom中产生的一个scroll事件就会先将
+   * CurrentUpdatePriority设置为ContinuousEventPriority然后像reconciler这种模块就能在这里获取到
+   * 当前的UpdatePriority
+   */
   const updateLane: Lane = getCurrentUpdatePriority()
 
   if (updateLane !== NoLane) {
     return updateLane
   }
 
+  //大部分事件产生的更新，可以通过getCurrentEventPriority单独获取优先级，比如click
+  //就会获取到DiscreteEventPriority
   const eventLane: Lane = getCurrentEventPriority()
 
   return eventLane

@@ -260,7 +260,16 @@ const unstable_scheduleCallback = (
   return newTask
 }
 
+/**
+ * 取消一个优先队列中的任务
+ * @param task 要取消的任务
+ */
 const unstable_cancelCallback = (task: Task) => {
+  /**
+   * 要删除一个优先队列中的随机元素，需要O(N)的时间复杂度很不划算
+   * 不如直接把他的callback直接赋值为null然后在pop出来的时候在判断一下
+   * 是否因该忽略他就行
+   */
   task.callback = null
 }
 

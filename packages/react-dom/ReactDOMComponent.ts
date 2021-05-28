@@ -34,7 +34,7 @@ const setInitialDOMProperties = (
       } else if (typeof nextProp === 'number') {
         setTextContent(domElement, nextProp + '')
       }
-    } else if (nextProp !== null) {
+    } else if (nextProp != null) {
       setValueForProperty(domElement, propKey, nextProp)
       //todo
     }
