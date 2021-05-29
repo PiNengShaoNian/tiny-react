@@ -1,3 +1,8 @@
+/**
+ * 当首次mount时HostRoot会用到，Class Component也会用到该类型的updateQueue
+ * Function Component使用的时另外的逻辑
+ */
+
 import { Fiber } from './ReactInternalTypes'
 
 export type SharedQueue = {

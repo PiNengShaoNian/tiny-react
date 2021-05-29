@@ -166,7 +166,7 @@ export const completeWork = (
       } else {
         const instance = createInstance(type, newProps, workInProgress)
 
-        //由于是前序遍历，当workInProgress进行归阶段时，
+        //由于是深度遍历，当workInProgress进行归阶段时，
         //其所有子节点都已完成了递和归阶段，也就是意味着其子树的所有dom节点已经创建
         //所以只需要把子树中离instance最近的dom节点追加到instance上即可
         appendAllChildren(instance, workInProgress)

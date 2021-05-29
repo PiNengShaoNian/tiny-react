@@ -665,6 +665,10 @@ const commitLayoutEffectOnFiber = (
 ): void => {
   if ((finishedWork.flags & Update) !== NoFlags) {
     switch (finishedWork.tag) {
+      /**
+       * 当Function组件中包含LayoutEffect是，它会被打上Update标签
+       * 然后会在这里同步执行LayoutEffect的create函数
+       */
       case FunctionComponent: {
         commitHookEffectListMount(HookLayout | HookHasEffect, finishedWork)
         break
@@ -679,6 +683,10 @@ const commitLayoutEffectOnFiber = (
         //   commitMount(instance, type, props, finishedWork)
         // }
 
+        break
+      }
+      case HostText: {
+        // 没有和Text相关的生命周期
         break
       }
       default:
@@ -735,7 +743,7 @@ const commitLayoutEffects_begin = (
 
 export const commitLayoutEffects = (
   finishedWork: Fiber,
-  root: FiberRoot,
+  root: FiberRoot
 ): void => {
   nextEffect = finishedWork
 

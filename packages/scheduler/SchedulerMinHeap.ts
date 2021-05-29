@@ -1,3 +1,7 @@
+/**
+ * 最小优先队列实现，具体原理可以自行了解
+ */
+
 type Heap = Array<Node>
 export type Node = {
   id: number

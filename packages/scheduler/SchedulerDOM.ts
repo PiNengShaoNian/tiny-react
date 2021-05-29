@@ -3,17 +3,45 @@ import { push, Node, peek, pop } from './SchedulerMinHeap'
 
 type Task = {
   id: number
+  /**
+   * 该任务的要执行的操作，最常见的就是performConcurrentWorkOnRoot
+   * 时间分片就靠此实现
+   */
   callback: Function | null
+  /**
+   * 该任务的优先级
+   */
   priorityLevel: PriorityLevel
+  /**
+   * 该任务的开始时间
+   */
   startTime: number
+  /**
+   * 该任务的过期时间
+   */
   expirationTime: number
+  /**
+   * 最小优先队列中会按照该字段将一个节点放到队列合适的位置和expirationTime是同一个值
+   */
   sortIndex: number
 }
 
 const getCurrentTime = () => performance.now()
+/**
+ * NORMAL级别任务过期时间的计算标准，比如现在时间为0，
+ * 有一个Normal级别的任务被调度了，那么他的过期时间就为
+ * `当前时间 +NORMAL_PRIORITY_TIMEOUT`
+ * 等于5000
+ */
 const NORMAL_PRIORITY_TIMEOUT = 5000
 let taskIdCounter = 1
+/**
+ * 延时任务队列，我们的代码中没有用到
+ */
 const timerQueue: Node[] = []
+/**
+ * 存放任务的最小有限队列
+ */
 const taskQueue: Node[] = []
 let isHostCallbackScheduled = false
 let isHostTimeoutScheduled = false
@@ -44,9 +72,17 @@ const performWorkUntilDeadline = () => {
     let hasMoreWork = true
 
     try {
+      /**
+       * 在我们的代码中scheduledHostCallback一直都是flushWork
+       * 下面这行代码执行了flushWork
+       */
       hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime)
     } finally {
       if (hasMoreWork) {
+        /**
+         * 如果任务队列还不为空，就注册一个宏任务待会回来继续执行任务
+         * 时间分片实现的关键
+         */
         schedulePerformWorkUntilDeadline()
       } else {
         isMessageLoopRunning = false
@@ -61,6 +97,10 @@ const performWorkUntilDeadline = () => {
   needsPaint = false
 }
 
+/**
+ * 使用postMessage注册一个宏任务
+ * @param callback
+ */
 const requestHostCallback = (callback: Function): void => {
   scheduledHostCallback = callback
 
@@ -130,7 +170,7 @@ const handleTimeout = (currentTime: number) => {
   }
 }
 
-const workLoop = (hasTimeRemaining: number, initialTime: number) => {
+const workLoop = (hasTimeRemaining: boolean, initialTime: number) => {
   let currentTime = initialTime
   advanceTimers(currentTime)
   currentTask = peek(taskQueue) as any
@@ -180,8 +220,8 @@ const workLoop = (hasTimeRemaining: number, initialTime: number) => {
   }
 }
 
-const flushWork = (hasTimeRemaining: number, initialTime: number) => {
-  //我们需要下一个host callback能被规划
+const flushWork = (hasTimeRemaining: boolean, initialTime: number) => {
+  //将该变量设置为false,让以后的host callback能被规划
   isHostCallbackScheduled = false
 
   if (isHostTimeoutScheduled) {
@@ -201,6 +241,17 @@ const flushWork = (hasTimeRemaining: number, initialTime: number) => {
   }
 }
 
+/**
+ * 调度一个任务，根据其优先级为其设置一个过期时间,
+ * 然后将他放入一个以过期时间为排序标准的最小优先队列
+ * 比如调度了一个Normal和一个Sync级别的任务，且当前时间为0
+ * 所以Normal级别的任务的过期时间为5000，而Sync级别的为-1
+ * 所以Sync级别的过期时间被Normal级别的小，会被先出队执行
+ * @param priorityLevel 该任务的优先级,决定了该任务的过期时间
+ * @param callback 要调度的任务最常见的就是performConcurrentWorkOnRoot
+ * @param options
+ * @returns 返回该任务节点，持有该任务节点的模块可在其执行前将其取消
+ */
 const unstable_scheduleCallback = (
   priorityLevel: PriorityLevel,
   callback: Function,
@@ -249,8 +300,11 @@ const unstable_scheduleCallback = (
     throw new Error('Not Implement')
   } else {
     newTask.sortIndex = expirationTime
+    //入队
     push(taskQueue, newTask)
 
+    //用postMessage注册一个宏任务，在该宏任务中执行任务队列中的任务
+    //并设置相关变量防止二次注册
     if (!isHostCallbackScheduled && !isPerformingWork) {
       isHostCallbackScheduled = true
       requestHostCallback(flushWork)

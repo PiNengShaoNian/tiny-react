@@ -79,7 +79,8 @@ export const markStarvedLanesAsExpired = (
 }
 
 /**
- * 获得一个数中以最低位1所形成的数字，原理可以去查看负数的表示
+ * 返回现在被占用的lanes中最高优先级的lane
+ * 也就是获得一个数中以最低位1所形成的数字，原理可以去查看负数的表示
  * 比如输入 0b111 就返回 0b001
  * 0b101 -> 0b001
  * 0b100 -> 0b100
@@ -205,8 +206,17 @@ export const includesNonIdleWork = (lanes: Lanes): boolean => {
   return (lanes & NonIdleLanes) !== NonIdleLanes
 }
 
+/**
+ * 是否开启默认同步模式
+ */
 const enableSyncDefaultUpdates = false
 
+/**
+ * 是否开启时间切片
+ * @param root 
+ * @param lanes 
+ * @returns 
+ */
 export const shouldTimeSlice = (root: FiberRoot, lanes: Lanes): boolean => {
   if ((lanes & root.expiredLanes) !== NoLanes) {
     //至少有一个lane已经过期了，为了防止更多的lane过期
@@ -223,6 +233,12 @@ export const shouldTimeSlice = (root: FiberRoot, lanes: Lanes): boolean => {
   }
 }
 
+/**
+ * 进行本轮更新的收尾工作，将完成工作的lane time重置，并将他们
+ * 从pendingLanes，expiredLanes去除
+ * @param root  
+ * @param remainingLanes 剩余要进行工作的lanes 
+ */
 export const markRootFinished = (root: FiberRoot, remainingLanes: Lanes) => {
   const noLongerPendingLanes = root.pendingLanes & ~remainingLanes
 

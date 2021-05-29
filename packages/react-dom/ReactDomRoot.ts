@@ -90,8 +90,8 @@ const createRootImpl = (container: Container, tag: RootTag): FiberRoot => {
 }
 
 /**
- * 创建一个LegacyRoot也就是ReactDOM.render所创建出的root该模式
- * 没有优先级调度，以及事件切片功能
+ * 创建一个LegacyRoot也就是ReactDOM.render所创建出的root
+ * 该模式没有优先级调度，以及时间切片功能
  * @param container 挂载ReactApp 的dom容器
  * @returns 
  */

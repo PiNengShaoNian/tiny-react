@@ -110,15 +110,27 @@ const dispatchAction = <S, A>(
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
   ) {
+    /**
+     * render阶段产生的更新(也就是在调用Function组件的过程中产生的更新)，暂未实现
+     * 比如以下组件在调用时就会产生这样的更新,这样的更新如果一直产生react就会一直重复调用
+     * 该组件，直到他不在产生这种更新为止，所以setCount如果不写在任何逻辑语句里会导致无限循环
+     * function Foo() {
+     *   const [count, setCount] = useState(0)
+     *  
+     *   setCount(1)
+     * 
+     *   return null
+     * }
+     * 注意在effect中的产生的更新不属于这种更新，等到effect的create函数执行时，render阶段早结束了
+     */
+
     //todo
     throw new Error('Not Implement')
   } else {
-    // try {
-    //   throw new Error('beforeisInterleavedUpdate stack info')
-    // } catch (e) {
-    //   console.log(e)
-    // }
-    // console.log('beforeisInterleavedUpdate', fiber, lane)
+    //在Concurrent Mode中，如果在一个时间切片后，有更新中途加入，会被加入到
+    //interleaved queue中，等到prepareFreshStack调用时会将interleaved queue加入到
+    //pending queue中，这两个分支的逻辑是等价的删除isInterleavedUpdate分支并不
+    //影响代码运行
     if (isInterleavedUpdate(fiber, lane)) {
       const interleaved = queue.interleaved
       if (interleaved === null) {

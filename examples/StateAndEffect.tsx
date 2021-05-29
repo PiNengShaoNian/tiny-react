@@ -18,7 +18,15 @@ export const StateEffectDemo = () => {
     <span>
       <button onClick={() => setNum(num + 1)}>num-{num}</button>
       <br />
-      <button onClick={() => setNum1(num1 + 1)}>num1-{num1}</button>
+      <button
+        onClick={() => {
+          setNum1(num1 + 1)
+          setNum1(num1 + 2)
+          setNum1(num1 + 3)
+        }}
+      >
+        num1-{num1}
+      </button>
     </span>
   )
 }
