@@ -12,9 +12,12 @@ export const PriorityScheduling = () => {
   useEffect(() => {
     //暂时不支持ref直接用选择器获取
     const button = document.querySelector('button')!
-    setTimeout(() => updateCount(1), 1000)
+    // setTimeout(() => updateCount(1), 1000)
     setTimeout(() => {
+      updateCount(1)
       button.click()
+      updateCount(2)
+      // button.click()
     }, 1040)
   }, [])
 

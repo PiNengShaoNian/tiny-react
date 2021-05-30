@@ -645,7 +645,7 @@ export const discreteUpdates = <A, B, C, D, R>(
   c: C,
   d: D
 ): R => {
-  const previousPriority = getCurrentEventPriority()
+  const previousPriority = getCurrentUpdatePriority()
 
   try {
     setCurrentUpdatePriority(DiscreteEventPriority)

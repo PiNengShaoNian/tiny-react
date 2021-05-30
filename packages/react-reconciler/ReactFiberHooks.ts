@@ -47,11 +47,33 @@ export type FunctionComponentUpdateQueue = {
   lastEffect: Effect | null
 }
 
+/**
+ * Function组件中的所有Effect都会存在他fiber节点的updateQueue中
+ */
 export type Effect = {
+  /**
+   * 该Effect的标签，比如useEffect的就为HookPassive,
+   * useLayoutEffect的就为HookLayout
+   */
   tag: HookFlags
+  /**
+   * create函数，也就是useEffect,useLayoutEffect的第一个函数
+   */
   create: () => (() => void) | void
+  /**
+   * destroy函数，有create函数的返回值觉得，可以返回一个函数或者
+   * 选择什么都不返回
+   */
   destroy: (() => void) | void
+  /**
+   * 依赖数组，只有依赖数组里面的所有值都和前一轮严格相等
+   * Function组件的fiber才不会被打上PassiveEffect,或者UpdateEffect
+   * 标签，进而该Effect才不用去执行
+   */
   deps: unknown[] | null
+  /**
+   * 下一个Effect
+   */
   next: Effect
 }
 
@@ -60,6 +82,11 @@ let currentlyRenderingFiber: Fiber
 let currentHook: Hook | null = null
 let renderLanes: Lanes = NoLanes
 
+/**
+ * 所有Hook函数(useState, useEffect, useLayoutEffect)在Mount时都会调用的函数，用来创建一个Hook，并且把他
+ * 和前面的Hook连接起来
+ * @returns 返回当前创建的新Hook
+ */
 const mountWorkInProgressHook = (): Hook => {
   const hook: Hook = {
     next: null,
@@ -70,8 +97,14 @@ const mountWorkInProgressHook = (): Hook => {
   }
 
   if (workInProgressHook === null) {
+    /**
+     * 这是第一个被创建的Hook把他放到Function组件fiber的memoizedState中
+     */
     currentlyRenderingFiber.memoizedState = workInProgressHook = hook
   } else {
+    /**
+     * 不是第一个Hook，把他放到前面Hook的next中
+     */
     workInProgressHook = workInProgressHook.next = hook
   }
 
@@ -85,6 +118,11 @@ type Update<S, A> = {
 }
 
 export type UpdateQueue<S, A> = {
+  /**
+   * 要进行的更新的队列，其中在同一轮事件循环内产生的更新
+   * 都会被连接到在这个循环链表中，其中只有第一个产生的更新会被调度，
+   * 其他的都只是直接被挂在在上面，等到render阶段时一起被render
+   */
   pending: Update<S, A> | null
   lastRenderedReducer: ((s: S, a: A) => S) | null
   lastRenderedState: S | null
@@ -116,9 +154,9 @@ const dispatchAction = <S, A>(
      * 该组件，直到他不在产生这种更新为止，所以setCount如果不写在任何逻辑语句里会导致无限循环
      * function Foo() {
      *   const [count, setCount] = useState(0)
-     *  
+     *
      *   setCount(1)
-     * 
+     *
      *   return null
      * }
      * 注意在effect中的产生的更新不属于这种更新，等到effect的create函数执行时，render阶段早结束了
@@ -326,11 +364,9 @@ const updateReducer = <S, I, A>(
       if (!isSubsetOfLanes(renderLanes, updateLane)) {
         /**
          * 没有足够的优先级，跳过这个update,如果这个是第一个跳过的更新，那么
-         * 之前的 update和state就是新的baseUpdate和baseState
+         * 为了保证打乱更新顺序后，状态更新的正确性
+         * 会将之前的 update和state就是新的baseUpdate和baseState
          */
-
-        // throw new Error('Not Implement')
-
         const clone: Update<S, A> = {
           lane: updateLane,
           action: update.action,
@@ -344,6 +380,10 @@ const updateReducer = <S, I, A>(
           newBaseQueueLast = newBaseQueueLast!.next = clone
         }
 
+        /**
+         *该更新被跳过，在fiber上留下他的Lane待会completeWork的时候会将它冒泡到HostRoot,
+         * 以能在下一轮更新时重新被执行 
+         */
         currentlyRenderingFiber.lanes = mergeLanes(
           currentlyRenderingFiber.lanes,
           updateLane
@@ -382,6 +422,12 @@ const updateReducer = <S, I, A>(
     hook.baseQueue = newBaseQueueLast
 
     queue.lastRenderedState = newState
+  }
+
+  const lastInterleaved = queue.interleaved
+
+  if (lastInterleaved !== null) {
+    throw new Error('Not Implement')
   }
 
   const dispatch: Dispatch<A> = queue.dispatch!
