@@ -212,7 +212,8 @@ export const includesNonIdleWork = (lanes: Lanes): boolean => {
 const enableSyncDefaultUpdates = false
 
 /**
- * 是否开启时间切片
+ * 是否开启时间切片,React中默认开启了同步模式(enableSyncDefaultUpdates)，所以不会
+ * 开启事件分片，我们这为了学习把他关闭
  * @param root 
  * @param lanes 
  * @returns 

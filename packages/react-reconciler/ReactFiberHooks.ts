@@ -309,7 +309,7 @@ const updateReducer = <S, I, A>(
 
   if (pendingQueue !== null) {
     if (baseQueue !== null) {
-      /**
+      /** 假设此时的baseQueue为下面的链表,则baseFirst为1
        *  ————
        * |    |
        * |    ↓
@@ -317,7 +317,7 @@ const updateReducer = <S, I, A>(
        */
       const baseFirst = baseQueue.next
 
-      /**
+      /** 假设此时的pendingQueue为下面的链表,则pendingFirst为3
        *  ————
        * |    |
        * |    ↓
@@ -339,7 +339,7 @@ const updateReducer = <S, I, A>(
     }
 
     current.baseQueue = baseQueue = pendingQueue
-    /** baseQueue结果
+    /** 此时的baseQueue结果
      *  ——————————————
      * |              |
      * |              ↓
@@ -365,7 +365,30 @@ const updateReducer = <S, I, A>(
         /**
          * 没有足够的优先级，跳过这个update,如果这个是第一个跳过的更新，那么
          * 为了保证打乱更新顺序后，状态更新的正确性
-         * 会将之前的 update和state就是新的baseUpdate和baseState
+         * 会从第一个跳过的update开始把他们全部接在baseQueue上
+         * 比如以下例子，在pendingQueue中有三个更新，且假设此时的state为0
+         * {                  {                                {
+         *   lane: 16, ---->      lane: 1,               ---->    lane: 16,
+         *   action: 1            action: (v) => v + 2            action: (v) => v + 1
+         * }                  }                                }
+         *
+         *  如果按照正常的逻辑 state的变化为 0 --`set(1)`--> 1 --`incr(2)`--> 3 --`incr(1)`--> 4
+         *  所以state的最终值应该是4
+         *  如果我们尝试把他们更具优先级分成两波更新，lane为1的先更新，lane为16的后更新
+         *  那么state的变化应该是
+         *     第一波更新 0 --`incr(2)`--> 2
+         *     第二波更新 2 --`set(1)`--> 1 --`incr(1)`--> 2
+         *  可以看到根据优先级分批更新倒是实现了，但是最终的状态和期待的对不上了
+         *  但是如果我们在跳过某个更新时从他这里开始把他接到到baseQueue上，然后第二轮
+         *  低优先级的更新开始更新时再从baseQueue开始就能保证分批更新时状态的正确性
+         *  比如上面的pendingQueue在以renderLanes为1渲染时就会形成以下baseQueue
+         * {                  {                                {
+         *   lane: 16, ---->      lane: 1               ---->     lane: 16
+         *   action: 1            action: (v) => v + 2            action: (v) => v + 1
+         * }                  }                                }
+         *
+         * 此时baseState为第一个跳过update时的state也就是0
+         * 所以第二轮以renderLanes为16渲染低优先级update时获得的state最终结果就会是正确的
          */
         const clone: Update<S, A> = {
           lane: updateLane,
@@ -382,7 +405,7 @@ const updateReducer = <S, I, A>(
 
         /**
          *该更新被跳过，在fiber上留下他的Lane待会completeWork的时候会将它冒泡到HostRoot,
-         * 以能在下一轮更新时重新被执行 
+         * 以能在下一轮更新时重新被执行
          */
         currentlyRenderingFiber.lanes = mergeLanes(
           currentlyRenderingFiber.lanes,
@@ -391,6 +414,9 @@ const updateReducer = <S, I, A>(
       } else {
         //改更新拥有足够的优先级
         if (newBaseQueueLast !== null) {
+          /**
+           * 前面已经有被跳过的更新，则将他也接到baseQueue上
+           */
           const clone: Update<S, A> = {
             lane: NoLane,
             action: update.action,
@@ -415,6 +441,11 @@ const updateReducer = <S, I, A>(
     }
 
     if (!Object.is(newState, hook.memoizedState)) {
+      /**
+       * 非常重要的逻辑判断，他决定了是否能执行bailoutHooks逻辑
+       * 如果执行了bailoutHooks逻辑就会将这个hook造成的副作用(flags,lanes)从fiber树
+       * 清除，最终到commit阶段如果发现没有副作用，就什么都不用干
+       */
       markWorkInProgressReceivedUpdate()
     }
     hook.memoizedState = newState
@@ -622,6 +653,12 @@ const HooksDispatcherOnUpdate: Dispatcher = {
   useLayoutEffect: updateLayoutEffect,
 }
 
+/**
+ * 用来清除一个fiber节点上的副作用标记
+ * @param current 
+ * @param workInProgress 
+ * @param lanes 
+ */
 export const bailoutHooks = (
   current: Fiber,
   workInProgress: Fiber,

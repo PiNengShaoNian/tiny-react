@@ -16,7 +16,7 @@ export const PriorityScheduling = () => {
     setTimeout(() => {
       updateCount(1)
       button.click()
-      updateCount(2)
+      updateCount(3)
       // button.click()
     }, 1040)
   }, [])

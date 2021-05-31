@@ -272,10 +272,31 @@ export const commitUpdate = (
   newProps: Props,
   internalInstanceHandle: Object
 ): void => {
+  /**
+   * 更新fiber属性，ReactDOM事件系统能正常工作的关键
+   * 比如如下代码
+   * const Foo = () => {
+   *   const [count, setCount] = useState(0)
+   * 
+   *   return <div onClick={() => {
+   *              setCount(count + 1)
+   *           }}>{count}</div>
+   * }
+   * 如果不更新props的话，ReactDOM中事件机制执行时
+   * 从dom对应fiber提取到的onClick事件的handler将永远是首次mount时
+   * 的handler，这意味着他闭包中捕获到的count值永远都是0,所以不管你点击多少次div
+   * 他都等价于setCount(0 + 1),所以会导致不能正常更新
+   * 而调用了下面的updateFiberProps就不一样了，每次更新后handler里面闭包捕获到的count
+   * 都是最新值所以能正常更新
+   */
   updateFiberProps(domElement, newProps)
   updateProperties(domElement, updatePayload, type, oldProps, newProps)
 }
 
+/**
+ * 更具当前的事件返回对应的优先级
+ * @returns 
+ */
 export const getCurrentEventPriority = (): Lane => {
   const currentEvent = window.event
   if (currentEvent === undefined) {

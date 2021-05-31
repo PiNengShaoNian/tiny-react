@@ -118,12 +118,20 @@ const completeUnitOfWork = (unitOfWork: Fiber): void => {
   } while (completedWork !== null)
 }
 
+/**
+ * 以fiber节点为工作单位开始他们的begin阶段和complete阶段
+ * @param unitOfWork 当前要进行工作的fiber节点
+ */
 const performUnitOfWork = (unitOfWork: Fiber): void => {
   const current = unitOfWork.alternate
 
   let next: Fiber | null = null
 
-  //创建或者reconcile unitOfWork.child并将其返回
+  //创建或者reconcile(也就是diff)unitOfWork的子节点(注意是子节点,是和unitOfWork仅有一层之隔的节点，不是孙子节点，更不是重孙节点)
+  //根据current fiber树和新创建的JSX对象的区别，
+  //为对应的fiber节点打上相应的标记比如Update,Placement,ChildDeletion等
+  //然后将第一个子节点返回也就是unitOfWork.child
+  //因为同级节点直接使用sibling链接所以只用返回第一个就行
   next = beginWork(current, unitOfWork, subtreeRenderLanes)
 
   unitOfWork.memoizedProps = unitOfWork.pendingProps
@@ -404,7 +412,8 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
 
     //注册一个微任务
     scheduleMicrotask(flushSyncCallbacks)
-    //同步任务不仅过Scheduler模块，所以callbackNode一直都不存在东西
+    //同步任务不经过Scheduler模块，所以callbackNode一直都不存在东西
+    //但是callbackPriority会被设置为SyncLane
     newCallbackNode = null
   } else {
     //不是同步任务，通过scheduler模块调度他
@@ -483,6 +492,12 @@ const performConcurrentWorkOnRoot = (
   return null
 }
 
+/**
+ * 工作完成，根据返回的退出码执行对应的操作
+ * @param root FiberRoot
+ * @param exitStatus 退出码如果一切正常会返回RootCompleted
+ * @param lanes
+ */
 const finishConcurrentRender = (
   root: FiberRoot,
   exitStatus: RootExitStatus,
@@ -497,12 +512,30 @@ const finishConcurrentRender = (
   }
 }
 
+/**
+ * 在这个切片中一fiber为最小工作单位进行render工作，
+ * 这个切片到期就把控制权交还给浏览器
+ */
 const workLoopConcurrent = () => {
+  //和Sync模式的区别就是，是否加了shouldYield，能在一定
+  //时机暂停render过程
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress)
   }
 }
 
+/**
+ * 开始时间切片下的render过程，如果必须要把控制权交给浏览器了
+ * 那么render过程就会在workInProgress这暂停
+ * 如果workInProgress不为空，那么就返回状态码RootIncomplete
+ * 方便让Scheduler模块在调度一次 performConcurrentWorkOnRoot
+ * 待会让他回来在接着进行render工作，如果workInProgress为空表示
+ * 表示render工作已经全部完成了，可以返回RootCompleted退出码
+ * 然后直接进入commit阶段
+ * @param root FiberRoot
+ * @param lanes 当前被占用的lanes
+ * @returns 退出码可以为RootIncomplete,RootCompleted等
+ */
 const renderRootConcurrent = (root: FiberRoot, lanes: Lanes) => {
   const prevExecutionContext = executionContext
   executionContext |= RenderContext
@@ -638,6 +671,16 @@ export const scheduleUpdateOnFiber = (
   return root
 }
 
+/**
+ * ReactDOM中点击事件的外层包装函数在这个函数内被调用的函数
+ * 在调用requestUpdateLane获取优先级是，会得到DiscreteEventPriority优先级
+ * @param fn 要被包装的函数
+ * @param a
+ * @param b
+ * @param c
+ * @param d
+ * @returns
+ */
 export const discreteUpdates = <A, B, C, D, R>(
   fn: (a: A, b: B, c: C, d: D) => R,
   a: A,

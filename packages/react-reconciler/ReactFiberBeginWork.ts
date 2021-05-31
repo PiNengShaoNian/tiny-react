@@ -43,6 +43,15 @@ const updateFunctionComponent = (
   return workInProgress.child
 }
 
+/**
+ * 优化路径，该fiber节点没有要进行的工作，看看他的子树有没有工作要做，如果
+ * 有就返回子节点继续子节点的render过程，如果没有就直接返回null,此时以workInProgress
+ * 为根的fiber子树的render过程就直接完成了
+ * @param current
+ * @param workInProgress
+ * @param renderLanes 此次render的优先级
+ * @returns
+ */
 const bailoutOnAlreadyFinishedWork = (
   current: Fiber | null,
   workInProgress: Fiber,
@@ -56,13 +65,14 @@ const bailoutOnAlreadyFinishedWork = (
     return null
   }
 
-  //该节点没有工作，但是他的子节点有，clone他的子节点，然后继续
+  //该节点没有工作，但是他的子节点有，从current Fiber树中克隆他的子节点，然后继续
   cloneChildFibers(current, workInProgress)
   return workInProgress.child
 }
 
 /**
- * 更新HostRoot节点
+ * 更新HostRoot节点，此函数只会在首次渲染时使用
+ * 其他情况下HostRoot走的都是bailout逻辑
  * @param current
  * @param workInProgress
  * @returns
@@ -107,7 +117,6 @@ const reconcileChildren = (
       renderLanes
     )
   } else {
-    //todo update
     workInProgress.child = reconcileChildFibers(
       workInProgress,
       current.child,
@@ -117,6 +126,17 @@ const reconcileChildren = (
   }
 }
 
+/**
+ * 应为函数组件的fiber在创建时会被赋值为IndeterminateComponent
+ * 所以首次渲染时Function组件会走这个逻辑
+ * 详细逻辑可以看 react-reconciler\ReactFiber.ts下的
+ * createFiberFromTypeAndProps函数
+ * @param current
+ * @param workInProgress
+ * @param Component 函数组件
+ * @param renderLanes
+ * @returns
+ */
 const mountIndeterminateComponent = (
   current: Fiber | null,
   workInProgress: Fiber,
@@ -175,7 +195,7 @@ export const beginWork = (
 ): Fiber | null => {
   const updateLanes = workInProgress.lanes
 
-  //当页面第一次渲染时current fiber除了FiberRoot.current的HostRoot节点其他都还未创建,
+  //当页面第一次渲染时current fiber树除了HostRoot(也就是FiberRoot.current)节点其他都还未创建,
   //workInPgress树中的HostRoot(FiberRoot.current.alternate)也在prepareFreshStack函数中被创建
   if (current !== null) {
     const oldProps = current.memoizedProps
@@ -187,6 +207,8 @@ export const beginWork = (
       didReceiveUpdate = false
       switch (workInProgress.tag) {
         case HostRoot:
+          break
+        case HostComponent:
           break
         case HostText:
           break
@@ -203,7 +225,7 @@ export const beginWork = (
     didReceiveUpdate = false
   }
 
-  //在进入begin流程前，先清除pending中的lanes，否则会导致HostRoot不能进入bailout逻辑，
+  //在进入begin流程前，先清除workInProgress pending中的lanes，否则会导致HostRoot不能进入bailout逻辑，
   //导致后续的更新不会触发，还会导致root上的pendingLanes一直不为空
   //会让performConcurrentWorkOnRoot一直被schedule下去
   workInProgress.lanes = NoLanes

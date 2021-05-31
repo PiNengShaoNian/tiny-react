@@ -1,3 +1,6 @@
+/**
+ * 不需要加单位的css属性
+ */
 const isUnitlessNumber = {
   animationIterationCount: true,
   aspectRatio: true,
@@ -46,6 +49,13 @@ const isUnitlessNumber = {
   strokeWidth: true,
 }
 
+/**
+ * 根据CSS属性名称和CSS值为他加上合适的单位
+ * @param name CSS属性名
+ * @param value CSS值
+ * @param isCustomProperty 是否时自定义属性比如 `--bg-color`这种
+ * @returns 返回加上单位后的CSS值
+ */
 const dangerousStyleValue = (
   name: string,
   value: unknown,
@@ -67,6 +77,9 @@ const dangerousStyleValue = (
   return ('' + value).trim()
 }
 
+/**
+ * 根据style属性里面的对象，为dom节点设置样式
+ */
 export const setValueForStyles = (
   node: HTMLElement,
   styles: Record<string, any>

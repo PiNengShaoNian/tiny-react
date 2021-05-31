@@ -17,6 +17,10 @@ import {
 import { Flags, NoFlags } from './ReactFiberFlags'
 import { Lanes, NoLanes } from './ReactFiberLane'
 
+/**
+ * 属性含义可查看react-reconciler\ReactInternalTypes.ts
+ * 下的Fiber Type
+ */
 class FiberNode {
   stateNode: any = null
   updateQueue: unknown = null
@@ -119,6 +123,16 @@ export const createWorkInProgress = (
   return workInProgress
 }
 
+/**
+ * 根据JSX对象的type和props创建一个fiber节点
+ * @param type 可以为string比如div,p可以为函数，比如函数组件
+ * 可以为类比如类组件可以为Symbol比如React.Fragment
+ * @param key 
+ * @param pendingProps 
+ * @param mode fiber树的模式比如Concurrent,Legacy
+ * @param lanes 
+ * @returns 
+ */
 export const createFiberFromTypeAndProps = (
   type: any,
   key: null | string,

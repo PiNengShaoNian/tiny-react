@@ -5,9 +5,11 @@ import { PriorityScheduling } from './PriorityScheduling'
 import { StateEffectDemo } from './StateAndEffect'
 import { TimeSlicingDemo } from './TimeSlicing'
 import { TodoList } from './TodoList'
+import { ChildrenReconcilerDemo } from './ChildrenReconciler'
 
 // createRoot(document.querySelector('#app')!).render(<TodoList />)
-createRoot(document.querySelector('#app')!).render(<PriorityScheduling />)
+// createRoot(document.querySelector('#app')!).render(<PriorityScheduling />)
+createRoot(document.querySelector('#app')!).render(<ChildrenReconcilerDemo />)
 // createRoot(document.querySelector('#app')!).render(<LayoutEffectDemo />)
 // createRoot(document.querySelector('#app')!).render(<StateEffectDemo />)
 // render(<PriorityScheduling />, document.querySelector('#app')!)

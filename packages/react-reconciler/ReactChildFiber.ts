@@ -12,8 +12,15 @@ import { HostText } from './ReactWorkTags'
 
 const isArray = Array.isArray
 
+/**
+ * diff函数的创建函数
+ * @param shouldTrackSideEffects 返回的diff函数是在何时使用的
+ * false时为mount时使用true时为update时使用
+ * @returns
+ */
 const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   const placeSingleChild = (newFiber: Fiber): Fiber => {
+    //mount时，为其打上Placement标签待会会把它插入到dom树中
     if (shouldTrackSideEffects && newFiber.alternate === null) {
       newFiber.flags |= Placement
     }
@@ -74,9 +81,11 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     lanes: Lanes
   ): Fiber => {
     if (current !== null) {
-      const existing = useFiber(current, element.props)
-      existing.return = returnFiber
-      return existing
+      if (current.type === element.type) {
+        const existing = useFiber(current, element.props)
+        existing.return = returnFiber
+        return existing
+      }
     }
 
     const created = createFiberFromElement(element, returnFiber.mode, lanes)
@@ -109,6 +118,15 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     }
   }
 
+  /**
+   * 判断该对应位置的fiber是否可以复用
+   * 只有type相同且key也相同的情况下才会复用
+   * @param returnFiber
+   * @param oldFiber 对应位置的fiber节点
+   * @param newChild 对应位置的jsx对象
+   * @param lanes
+   * @returns
+   */
   const updateSlot = (
     returnFiber: Fiber,
     oldFiber: Fiber | null,
@@ -139,6 +157,24 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     throw new Error('Invalid Object type')
   }
 
+  /**
+   *
+   * @param newFiber 当前要摆放的节点
+   * @param lastPlacedIndex 当前节点的前一个节点，在更新前所处的index
+   * 如果是首次mount则 lastPlacedIndex没有意义，该值主要用来判断该节点在这次更新后
+   * 是不是原来在他后面的节点，现在跑到他前面了如果是他就是需要重新插入dom树的
+   * 那么怎么判断他后面的节点是不是跑到他前面了呢，考虑以下情况
+   * 更新前: 1 -> 2 -> 3 -> 4
+   * 更新后: 1 -> 3 -> 2 -> 4
+   * 在处理该次更新时，当遍历到2时，此时lastPlacedIndex为2，而2的oldIndex为1
+   * 所以可以判断到newFiber.oldIndex小于lastPlacedIndex，也就意味着他前面的元素之前是在他后面的
+   * 但是现在跑到他前面了，所以newFiber也就是2是需要重新插入dom树的
+   * 在commit阶段时，对2相应的dom进行重新插入时，
+   * 会寻找他后面第一个不需要进行插入操作的dom元素作为insertBefore
+   * 的第二个参数，所以2对应的dom会被插入到4前面
+   * @param newIndex 当前要摆放的节点,在此次更新中的index
+   * @returns lastPlacedIndex的新值，结合上面的逻辑自行理解
+   */
   const placeChild = (
     newFiber: Fiber,
     lastPlacedIndex: number,
@@ -156,7 +192,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       //更新前有以下数组元素1->2
       //更新后他们的位置交换变为2 -> 1
       //这时1元素的oldIndex(0)会小于lastPlacedIndex(和前一轮2元素的index相同也就是1)
-      //这是意味着1元素的位置需要改变了，所以将他打赏Placement标签，待会会将它重新插入dom树
+      //这是意味着1元素的位置需要改变了，所以将他打上Placement标签，待会会将它重新插入dom树
       if (oldIndex < lastPlacedIndex) {
         newFiber.flags |= Placement
         return lastPlacedIndex
@@ -204,6 +240,13 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     throw new Error('Not Implement')
   }
 
+  /**
+   * 要删除一个节点时，会将它加入到在父节点的deletions数组中
+   * 并且将其父节点打上ChildDeletion标签
+   * @param returnFiber 要删除节点的父节点
+   * @param childToDelete 要删除的节点
+   * @returns
+   */
   const deleteChild = (returnFiber: Fiber, childToDelete: Fiber): void => {
     if (!shouldTrackSideEffects) {
       return
@@ -444,6 +487,19 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   return reconcileChildFibers
 }
 
+/**
+ * 在一个节点没有更新，但子组件有工作的情况下
+ * 会调用该函数克隆该节点的子节点，注意该函数在调用
+ * createWorkInProgress传入的第二个参数props是current props,
+ * 所以当进行子节点的beginWork阶段时他的oldProps，newProps是相等的
+ * 如果在发现子节点不存在lanes的话子节点也会进入bailoutOnAlreadyFinishedWork逻辑
+ * 不过还是不能全部靠这种优化来减少render的工作量，这种优化有雪崩效应，一旦一个fiber节点有更新
+ * 那他所在的子树全都得走一遍render流程，所以必要时还是得用上memo这种手动优化手段，对每个props的
+ * 属性进行浅比较,再决定是否真的收到更新
+ * @param current
+ * @param workInProgress
+ * @returns
+ */
 export const cloneChildFibers = (
   current: Fiber | null,
   workInProgress: Fiber
@@ -456,6 +512,9 @@ export const cloneChildFibers = (
 
   newChild.return = workInProgress
 
+  /**
+   * 只复制一层，也就是只复制子节点，其他的不管
+   */
   while (currentChild.sibling !== null) {
     currentChild = currentChild.sibling
     newChild = newChild.sibling = createWorkInProgress(

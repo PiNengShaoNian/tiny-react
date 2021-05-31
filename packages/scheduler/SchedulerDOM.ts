@@ -143,6 +143,17 @@ const advanceTimers = (currentTime: number) => {
   }
 }
 
+/**
+ * 是否将控制权交还给浏览器
+ * 为了更好的知道归还时机
+ * facebook甚至还和Chrome团队联合实现了一个
+ * isInputPending[https://web.dev/isinputpending/]
+ * 这个api默认是关闭的所以在这里我没有添加进来
+ * 更详细的实现可以去看官方仓库
+ * 现在的逻辑是一个切片的时间是5ms超过这个时间就把render工作
+ * 暂停，然后在下一个切片中继续工作
+ * @returns 
+ */
 const shouldYieldToHost = (): boolean => {
   return getCurrentTime() >= dealine
 }
