@@ -15,6 +15,7 @@ import {
   IndeterminateComponent,
 } from './ReactWorkTags'
 import { includesSomeLane, Lanes, NoLanes } from './ReactFiberLane'
+import { ContentReset } from './ReactFiberFlags'
 
 let didReceiveUpdate = false
 
@@ -173,9 +174,21 @@ const updateHostComponent = (
   const isDirectTextChild = shouldSetTextContent(type, nextProps)
 
   if (isDirectTextChild) {
+    /**
+     * 我们把子节点为文本这种情况特别处理，这是一种非常常见的情况
+     * 在这不会为该文本创建实际的fiber节点而是只把他放到props.children
+     * 待会更新props时会直接setTextContent把他设置到dom上，以避免还要创建
+     * 一个fiber节点，并遍历他
+     */
     nextChildren = null
   } else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {
-    // workInProgress.flags |= ContentRest
+    /**
+     * 此次更新时，当前需要被替换的节点一个单纯的文本节点，他没有对应的fiber节点
+     * 所以不能靠reconcile过程把他删除，所以我们在这直接把他的父节点打上ContentReset
+     * 标签待会commit阶段的时候它会被`textContent = ''`删除，这样他就能正常的被新内容替换，否则他将不会被清除一直存在在
+     * 他的父节点上
+     */
+    workInProgress.flags |= ContentReset
   }
 
   reconcileChildren(current, workInProgress, nextChildren, renderLanes)

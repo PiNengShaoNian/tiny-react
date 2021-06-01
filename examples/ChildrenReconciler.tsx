@@ -21,10 +21,31 @@ const NotReuseFiberWhenTypeChange = () => {
   )
 }
 
+const ResetContentWhenTextChildrenChangeToOther = () => {
+  const [isShowText, setIsShowText] = useState(false)
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          setIsShowText(!isShowText)
+        }}
+      >
+        toggle
+      </button>
+      <div>{isShowText ? <div>div</div> : 'Directed Text'}</div>
+    </div>
+  )
+}
+
 export const ChildrenReconcilerDemo = () => {
   return (
     <div>
+      NotReuseFiberWhenTypeChange
       <NotReuseFiberWhenTypeChange />
+      <br />
+      ResetContentWhenNormalChildrenChangeToText
+      <ResetContentWhenTextChildrenChangeToOther />
     </div>
   )
 }

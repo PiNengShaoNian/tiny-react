@@ -10,6 +10,7 @@ import { getEventPriority } from './events/ReactDOMEventListener'
 import { setInitialProperties, updateProperties } from './ReactDOMComponent'
 import { Container } from './ReactDomRoot'
 import { getHostProps as ReactDOMInputGetHostProps } from './ReactDOMInput'
+import { setTextContent } from './setTextContent'
 
 const STYLE = 'style'
 const CHILDREN = 'children'
@@ -113,6 +114,13 @@ export const appendChildToContainer = (
   }
 }
 
+/**
+ * 在首次mount时，为HostComponent初始化属性
+ * @param domElement 要初始化的dom
+ * @param type
+ * @param props 新的props
+ * @returns
+ */
 export const finalizeInitialChildren = (
   domElement: Element,
   type: string,
@@ -277,7 +285,7 @@ export const commitUpdate = (
    * 比如如下代码
    * const Foo = () => {
    *   const [count, setCount] = useState(0)
-   * 
+   *
    *   return <div onClick={() => {
    *              setCount(count + 1)
    *           }}>{count}</div>
@@ -295,7 +303,7 @@ export const commitUpdate = (
 
 /**
  * 更具当前的事件返回对应的优先级
- * @returns 
+ * @returns
  */
 export const getCurrentEventPriority = (): Lane => {
   const currentEvent = window.event
@@ -311,4 +319,8 @@ export const removeChild = (
   child: HTMLElement | Text
 ) => {
   parentInstance.removeChild(child)
+}
+
+export const resetTextContent = (domElement: Element): void => {
+  setTextContent(domElement, '')
 }

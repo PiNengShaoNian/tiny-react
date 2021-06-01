@@ -1,3 +1,6 @@
+/**
+ * 优先级调度的展示
+ */
 import React, { useState, useEffect } from '../packages/react'
 
 export const PriorityScheduling = () => {

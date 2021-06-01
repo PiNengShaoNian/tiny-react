@@ -12,7 +12,6 @@ export const setTextContent = (node: Element, text: string): void => {
       firstChild.nodeValue = text
       return
     }
-
-    node.textContent = text
   }
+  node.textContent = text
 }

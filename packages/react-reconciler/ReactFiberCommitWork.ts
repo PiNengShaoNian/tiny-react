@@ -1,6 +1,7 @@
 import {
   commitUpdate,
   removeChild,
+  resetTextContent,
   UpdatePayload,
 } from '../react-dom/ReactDOMHostConfig'
 import { Container } from '../react-dom/ReactDomRoot'
@@ -387,6 +388,9 @@ const commitUnmount = (
       //todo safelyDetachRef
       return
     }
+    case HostText: {
+      break
+    }
     default:
       throw new Error('Not Implement')
   }
@@ -644,8 +648,8 @@ const commitPlacement = (finishedWork: Fiber): void => {
   }
 
   if (parentFiber.flags & ContentReset) {
-    //todo
-    throw new Error('Not Implement')
+    resetTextContent(parent)
+    parentFiber.flags &= ~ContentReset
   }
 
   const before = getHostSibling(finishedWork)

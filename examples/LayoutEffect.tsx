@@ -1,3 +1,6 @@
+/**
+ * 切换useEffect和useLayoutEffect查看有什么区别
+ */
 import { CSSProperties } from 'react'
 import React, { useState, useEffect, useLayoutEffect } from '../packages/react'
 
