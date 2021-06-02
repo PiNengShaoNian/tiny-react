@@ -84,10 +84,29 @@ export type Fiber = {
   stateNode: any
 
   /**
-   * 存放了该fiber节点上的更新信息
-   */
+   * 存放了该fiber节点上的更新信息,其中HostRoot,FunctionComponent, HostComponent
+   * 的updateQueue各不相同，函数的组件的updateQueue是一个存储effect的链表
+   * 比如一个函数组件内有若干个useEffect，和useLayoutEffect，那每个effect
+   * 就会对应这样的一个数据结构 
+   * {
+   *  tag: HookFlags //如果是useEffect就是Passive如果是useLayoutEffect就是Layout
+   *  create: () => (() => void) | void //useEffect的第一个参数
+   *  destroy: (() => void) | void //useEffect的返回值
+   *  deps: unknown[] | null //useEffect的第二个参数
+   *  next: Effect
+   * }
+   * 各个effect会通过next连接起来
+   * HostComponent的updateQueue表示了该节点所要进行的更新，
+   * 比如他可能长这样
+   * ['children', 'new text', 'style', {background: 'red'}]
+   * 代表了他对应的dom需要更新textContent和style属性
+  */
   updateQueue: unknown
 
+  /**
+   * 表示了该节点的类型，比如HostComponent,FunctionComponent,HostRoot
+   * 详细信息可以查看react-reconciler\ReactWorkTags.ts
+   */
   tag: WorkTag
 
   /**
@@ -101,7 +120,7 @@ export type Fiber = {
   alternate: Fiber | null
 
   /**
-   * 用来标识该fiber节点,用于多节点children进行diff时优化时间复杂度
+   * 用于多节点children进行diff时提高节点复用的正确率
    */
   key: string | null
 

@@ -6,7 +6,7 @@ export type Lanes = number
 export type Lane = number
 export type LaneMap<T> = Array<T>
 
-export const NoLanes: Lane = /*                          */ 0b0000000000000000000000000000000
+export const NoLanes: Lane = /*                         */ 0b0000000000000000000000000000000
 export const NoLane: Lane = /*                          */ 0b0000000000000000000000000000000
 
 export const SyncLane: Lane = /*                        */ 0b0000000000000000000000000000001
@@ -28,8 +28,8 @@ const pickArbitraryLaneIndex = (lanes: Lanes): number => {
 /**
  * 根据任务的优先级为其计算一个过期时间
  * @param lane 优先级
- * @param currentTime 当前的时间 
- * @returns 
+ * @param currentTime 当前的时间
+ * @returns
  */
 const computeExpirationTime = (lane: Lane, currentTime: number): number => {
   switch (lane) {
@@ -86,8 +86,8 @@ export const markStarvedLanesAsExpired = (
  * 0b100 -> 0b100
  * 0b1000001000 -> 0b0000001000
  * 0b1111111110 -> 0b0000000010
- * @param lanes 
- * @returns 
+ * @param lanes
+ * @returns
  */
 export const getHighestPriorityLane = (lanes: Lanes): Lane => {
   return lanes & -lanes
@@ -95,8 +95,8 @@ export const getHighestPriorityLane = (lanes: Lanes): Lane => {
 
 /**
  * 返回现有的lanes中最高优先级的lane
- * @param lanes 
- * @returns 
+ * @param lanes
+ * @returns
  */
 const getHighestPriorityLanes = (lanes: Lanes | Lane): Lanes => {
   switch (getHighestPriorityLane(lanes)) {
@@ -163,6 +163,16 @@ export const mergeLanes = (a: Lanes | Lane, b: Lanes | Lane): Lanes => {
   return a | b
 }
 
+/**
+ * 返回该lane所在bit位在bitset中index
+ * 比如
+ * 0b001 就会返回0
+ * 0b010 就会返回1
+ * 0b100 就会返回2
+ *
+ * @param lane
+ * @returns
+ */
 const laneToIndex = (lane: Lane): number => {
   return pickArbitraryLaneIndex(lane)
 }
@@ -198,6 +208,12 @@ export const createLaneMap = <T>(initial: T): LaneMap<T> => {
   return laneMap
 }
 
+/**
+ * subset bitset是否是 set bitset的子集
+ * @param set
+ * @param subset
+ * @returns
+ */
 export const isSubsetOfLanes = (set: Lanes, subset: Lanes | Lane) => {
   return (set & subset) === subset
 }
@@ -213,10 +229,10 @@ const enableSyncDefaultUpdates = false
 
 /**
  * 是否开启时间切片,React中默认开启了同步模式(enableSyncDefaultUpdates)，所以不会
- * 开启事件分片，我们这为了学习把他关闭
- * @param root 
- * @param lanes 
- * @returns 
+ * 开启时间切片，我们这为了学习的目的把他关闭
+ * @param root
+ * @param lanes
+ * @returns
  */
 export const shouldTimeSlice = (root: FiberRoot, lanes: Lanes): boolean => {
   if ((lanes & root.expiredLanes) !== NoLanes) {
@@ -237,8 +253,8 @@ export const shouldTimeSlice = (root: FiberRoot, lanes: Lanes): boolean => {
 /**
  * 进行本轮更新的收尾工作，将完成工作的lane time重置，并将他们
  * 从pendingLanes，expiredLanes去除
- * @param root  
- * @param remainingLanes 剩余要进行工作的lanes 
+ * @param root
+ * @param remainingLanes 剩余要进行工作的lanes
  */
 export const markRootFinished = (root: FiberRoot, remainingLanes: Lanes) => {
   const noLongerPendingLanes = root.pendingLanes & ~remainingLanes

@@ -1,4 +1,8 @@
-import { NormalPriority, PriorityLevel } from './SchedulerPriorities'
+import {
+  ImmediatePriority,
+  NormalPriority,
+  PriorityLevel,
+} from './SchedulerPriorities'
 import { push, Node, peek, pop } from './SchedulerMinHeap'
 
 type Task = {
@@ -34,6 +38,11 @@ const getCurrentTime = () => performance.now()
  * 等于5000
  */
 const NORMAL_PRIORITY_TIMEOUT = 5000
+/**
+ * IMMEDIATE级别任务过期时间计算标准，和上面同理
+ */
+const IMMEDIATE_PRIORITY_TIMEOUT = -1
+
 let taskIdCounter = 1
 /**
  * 延时任务队列，我们的代码中没有用到
@@ -152,7 +161,7 @@ const advanceTimers = (currentTime: number) => {
  * 更详细的实现可以去看官方仓库
  * 现在的逻辑是一个切片的时间是5ms超过这个时间就把render工作
  * 暂停，然后在下一个切片中继续工作
- * @returns 
+ * @returns
  */
 const shouldYieldToHost = (): boolean => {
   return getCurrentTime() >= dealine
@@ -287,6 +296,9 @@ const unstable_scheduleCallback = (
   let timeout: number
 
   switch (priorityLevel) {
+    case ImmediatePriority:
+      timeout = IMMEDIATE_PRIORITY_TIMEOUT
+      break
     case NormalPriority:
       timeout = NORMAL_PRIORITY_TIMEOUT
       break
@@ -339,9 +351,10 @@ const unstable_cancelCallback = (task: Task) => {
 }
 
 export {
+  NormalPriority as unstable_NormalPriority,
+  ImmediatePriority as unstable_ImmediatePriority,
   getCurrentTime as unstable_now,
   unstable_scheduleCallback,
-  NormalPriority as unstable_NormalPriority,
   shouldYieldToHost as unstable_shouldYield,
   unstable_cancelCallback,
 }

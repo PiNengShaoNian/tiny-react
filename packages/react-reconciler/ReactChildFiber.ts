@@ -14,20 +14,35 @@ const isArray = Array.isArray
 
 /**
  * diff函数的创建函数
- * @param shouldTrackSideEffects 返回的diff函数是在何时使用的
- * false时为mount时使用true时为update时使用
+ * @param shouldTrackSideEffects 是否应该追踪副作用，在首次mount只需要对HostRoot的子节点执行一次Placement操作就行
+ * 不需要其他的操做，所以在创建mount的diff函数时设置为false,在update时需要进行增删改所以需要追踪副作用，所以创建
+ * 更新时的diff函数设置为true
  * @returns
  */
 const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   const placeSingleChild = (newFiber: Fiber): Fiber => {
-    //mount时，为其打上Placement标签待会会把它插入到dom树中
     if (shouldTrackSideEffects && newFiber.alternate === null) {
+      //该逻辑只有首次mount时HostRoot用到了，因为HostRoot的workInProgress，还是current都是始终存在的
+      //所以会走在diff其子节点时，会走reconcileChildFibers路线，所以shouldTrackSideEffects会被设置为true
+      //且因为是首次mount所以HostRoot的子节点的current节点为空，所以会进入到改逻辑
+      //所以它会被打上Placement标签待会会被插入dom树中
+      //注意首次mount时只有HostRoot的直接子节点才会进入这个逻辑，其他层级的节点会因为current为空直接进入mountChildFibers
+      //逻辑
       newFiber.flags |= Placement
     }
 
     return newFiber
   }
 
+  /**
+   *
+   * @param returnFiber diff单个节点，只有type和key都相同的情况下才会复用节点
+   * 否则就重新创建
+   * @param currentFirstChild
+   * @param element
+   * @param lanes
+   * @returns
+   */
   const reconcileSingleElement = (
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -39,22 +54,37 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
     while (child !== null) {
       if (child.key === key) {
-        deleteRemainingChildren(returnFiber, child.sibling)
-        const existing = useFiber(child, element.props)
-        existing.return = returnFiber
-        return existing
+        if (child.type === element.type) {
+          deleteRemainingChildren(returnFiber, child.sibling)
+          const existing = useFiber(child, element.props)
+          existing.return = returnFiber
+          return existing
+        }
+        //key相同但是type变了，直接停止遍历，把后面的节点都删了
+        //直接新建一个
+        deleteRemainingChildren(returnFiber, child)
+        break
       } else {
+        //key不相同把该节点删除
         deleteChild(returnFiber, child)
       }
 
+      //该节点不能复用看看下个节点能不能复用
       child = child.sibling
     }
 
+    //一个都不能复用，直接重新创建一个
     const created = createFiberFromElement(element, returnFiber.mode, lanes)
     created.return = returnFiber
     return created
   }
 
+  /**
+   * 删除currentFirstChild，以及他后面的所有节点
+   * @param returnFiber
+   * @param currentFirstChild 要删除的节点的起始节点
+   * @returns
+   */
   const deleteRemainingChildren = (
     returnFiber: Fiber,
     currentFirstChild: Fiber | null
@@ -74,6 +104,15 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     return null
   }
 
+  /**
+   * 更新一个fiber，如果前后他们的type没有变的话会复用该节点
+   * 如果type改变了会创建一个全新节点
+   * @param returnFiber 
+   * @param current 
+   * @param element 
+   * @param lanes 
+   * @returns 
+   */
   const updateElement = (
     returnFiber: Fiber,
     current: Fiber | null,
@@ -101,6 +140,14 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     return clone
   }
 
+  /**
+   * 更新文本节点
+   * @param returnFiber 
+   * @param current 
+   * @param textContent 
+   * @param lanes 
+   * @returns 
+   */
   const updateTextNode = (
     returnFiber: Fiber,
     current: Fiber | null,
@@ -121,6 +168,11 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   /**
    * 判断该对应位置的fiber是否可以复用
    * 只有type相同且key也相同的情况下才会复用
+   * diff函数会根据该函数的返回值进行相关的操做
+   * 如果key不相同直接返回null代表可能节点的位置发生了变更，
+   * 简单的循环是行不通的所以待会会进入updateFromMap逻辑，
+   * 如果是key相同但是type变了就选择不复用，而是选择重新创建一个元素返回
+   * 就会将以前同key的元素标记为删除
    * @param returnFiber
    * @param oldFiber 对应位置的fiber节点
    * @param newChild 对应位置的jsx对象
@@ -261,6 +313,13 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     }
   }
 
+  /**
+   * 创建一个map,将节点和key关联起来
+   * 待会就能以O(1)的时间复杂度直接获得key对应的fiber节点
+   * @param returnFiber 
+   * @param currentFirstChild 
+   * @returns 
+   */
   const mapRemainingChildren = (
     returnFiber: Fiber,
     currentFirstChild: Fiber
@@ -273,6 +332,25 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       if (existingChild.key !== null) {
         existingChildren.set(existingChild.key, existingChild)
       } else {
+        /**
+         * 如果没有显示的设置key，就是用他的index当作key，当然大部分情况下
+         * 这种做法并不能正确的复用他之前的节点，比如以下情况，假设更新前后都没有
+         * 显式的设置key
+         * 更新前: a -> b -> c
+         * 更新后: a -> c
+         * 在这次更新中将b节点删除，此时构建出来的map就为
+         * {
+         *   0 -> a,
+         *   1 -> b,
+         *   2 -> c
+         * }
+         * 而在处理c是实际获得的复用节点为map.get(1)等于b节点
+         * 也就是说本来不用做任何更改的c节点还需要还需要将复用的b节点
+         * 的属性更新至和c一致，这就是为什么说显示的设置唯一的key会
+         * 提高复用节点正确率的原因，当然上述情况如果更新前后都没有
+         * 设置key的话压根不会走进updateFromMap逻辑，在这里这是为了
+         * 方便描述原因
+         */
         existingChildren.set(existingChild.index, existingChild)
       }
 
@@ -282,6 +360,16 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     return existingChildren
   }
 
+  /**
+   * 尝试从map中找出新节点能复用的老节点
+   * @param existingChildren Map<Key, Fiber>
+   * @param returnFiber 
+   * @param newIdx 如果该新节点没有显式的设置key将会使用他此时的index
+   * 在map中查找复用节点 
+   * @param newChild 新的JSX对象 
+   * @param lanes 
+   * @returns 
+   */
   const updateFromMap = (
     existingChildren: Map<string | number, Fiber>,
     returnFiber: Fiber,
@@ -342,9 +430,10 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       )
 
       if (newFiber === null) {
-        //没有复用该节点，比如下面的情况，前后的key不一致
+        //没有复用该节点，比如下面的情况，同一位置节点前后的key不一致
+        //直接break,开始进行下面的updateFromMap流程
         /**
-         * {type: 'li', key: 1 }                   {type: 'li', key: 2 }
+         * {type: 'li', key: 1 }   --->   {type: 'li', key: 2 }
          *                           删除第一个后
          * {type: 'li', key: 2 }
          */
@@ -355,20 +444,28 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       }
 
       if (shouldTrackSideEffects) {
+        //只有在update的流程才需要进入该逻辑
+        //因为mount时唯一需要进行的操做就是placeChild
+
         if (oldFiber && newFiber.alternate === null) {
           /**
            * 两个位置的元素是匹配的，但是并没有复用现存的fiber,
-           * 所以我们需要把现存的child删掉
+           * 所以我们需要把现存的child删掉,新创建的fiber,alternate指向null
+           * 如果使用useFiber复用了节点，则newFiber的alternate会指向current
+           * fiber节点，比如[<div></div>]
            */
           deleteChild(returnFiber, oldFiber)
         }
       }
 
+      //根据新元素的位置判断他是否需要重新插入dom
       lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx)
 
       if (!previousNewFiber) {
+        //记录下第一个fiber待会将他返回作为接下来workInProgress
         resultingFirstChild = newFiber
       } else {
+        //不是第一个fiber，将他接到前一个节点的后面
         previousNewFiber.sibling = newFiber
       }
 
@@ -385,7 +482,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
     if (oldFiber === null) {
       /**
-       * 如果没有现存的节点了，我们可以一种更快的方法，因为剩下的节点都是待插入的
+       * 如果没有现存的节点了，我们可以用这种更快的方法，因为剩下的节点都是待插入的
        */
       for (; newIdx < newChildren.length; ++newIdx) {
         const newFiber = createChild(returnFiber, newChildren[newIdx], lanes)
@@ -404,9 +501,12 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       return resultingFirstChild
     }
 
+    //这些剩余节点都是不能通过简单循环就能获得复用节点的
+    //开始updateFromMap逻辑
     const existingChildren = mapRemainingChildren(returnFiber, oldFiber)
 
     for (; newIdx < newChildren.length; ++newIdx) {
+      //从map中尝试为newChildren[i]找到一个合适的复用节点
       const newFiber = updateFromMap(
         existingChildren,
         returnFiber,
@@ -420,6 +520,24 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
           if (newFiber.alternate !== null) {
             //该节点是可以复用的,我们可以把它从existingChildren删除
             //待会剩下的就是那些要删除的不可复用节点
+            //考虑以下情况
+            /**
+             * 更新前: [<div key="1">1<div>, <div key="2">2</div>, <div key="3">3</div>]
+             * 更新后: [<div key="3">3</div>, <div key="1">1<div>]
+             * 在这次更新中子元素的位置发生了变化，而且2还被删除了
+             * 由于第一个newChild进行工作时就会发现，同一位置前后元素
+             * 一个key是1一个是3，所以并没有成功复用节点就会直接break进入这里的updateFromMap逻辑
+             * 所以会更具current fiber节点构建出以下map
+             * {
+             *   1 -> <div key="1">1</div>,
+             *   2 -> <div key="2">2</div>,
+             *   3 -> <div key="3">3</div>,
+             * }
+             * 由于3节点和1节点都成功被复用,所以都会被从map中删除
+             * 所以此时map中还剩下一个2节点，此时就能知道这个2节点
+             * 就是没有被复用的废弃节点待会需要将这些废弃节点标记删除
+             * 这里也就是将2节点标记删除
+             */
             existingChildren.delete(
               newFiber.key === null ? newIdx : newFiber.key
             )
@@ -438,12 +556,21 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     }
 
     if (shouldTrackSideEffects) {
+      //删除没有被复用的废弃节点，只有在update流程中才需要这样做
       existingChildren.forEach((child) => deleteChild(returnFiber, child))
     }
 
     return resultingFirstChild
   }
 
+  /**
+   * diff函数的入口，更具不同子元素类型，进入不同的分支
+   * @param returnFiber 
+   * @param currentFirstChild 
+   * @param newChild 
+   * @param lanes 
+   * @returns 
+   */
   const reconcileChildFibers = (
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,

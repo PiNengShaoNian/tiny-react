@@ -1,5 +1,5 @@
 /**
- * 用来测试是子元素的diff是否正确
+ * 用来测试子元素的diff是否正确
  */
 
 import React, { useState } from '../packages/react'
@@ -38,6 +38,22 @@ const ResetContentWhenTextChildrenChangeToOther = () => {
   )
 }
 
+const UpdateTextNodeDemo = () => {
+  const [count, setCount] = useState(0)
+  return (
+    <div>
+      <div>{count}-</div>
+      <button
+        onClick={() => {
+          setCount(count + 1)
+        }}
+      >
+        increment
+      </button>
+    </div>
+  )
+}
+
 export const ChildrenReconcilerDemo = () => {
   return (
     <div>
@@ -46,6 +62,9 @@ export const ChildrenReconcilerDemo = () => {
       <br />
       ResetContentWhenNormalChildrenChangeToText
       <ResetContentWhenTextChildrenChangeToOther />
+      <br />
+      UpdateTextNodeDemo
+      <UpdateTextNodeDemo />
     </div>
   )
 }

@@ -3,7 +3,11 @@ import {
   getCurrentUpdatePriority,
   setCurrentUpdatePriority,
 } from './ReactEventPriorities'
-import { SchedulerCallback } from './Scheduler'
+import {
+  scheduleCallback,
+  SchedulerCallback,
+  ImmediatePriority,
+} from './Scheduler'
 
 let syncQueue: Array<SchedulerCallback> | null = null
 let includesLegacySyncCallbacks: boolean = false
@@ -42,9 +46,15 @@ export const flushSyncCallbacks = () => {
 
       syncQueue = null
       includesLegacySyncCallbacks = false
-    } catch (e) {
-      console.log(e)
-      throw new Error('Not Implement')
+    } catch (error) {
+      /**
+       * 如果一个任务发生异常，则跳过他接着调度他后面的任务
+       */
+      if (syncQueue !== null) {
+        syncQueue = syncQueue.slice(i + 1)
+      }
+      scheduleCallback(ImmediatePriority, flushSyncCallbacks, null)
+      throw error
     } finally {
       setCurrentUpdatePriority(previousUpdatePriority)
       isFlushingSyncQueue = false

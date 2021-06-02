@@ -61,7 +61,7 @@ export const lanesToEventPriority = (lanes: Lanes): EventPriority => {
     return ContinuousEventPriority
   }
 
-  //有lane被占用，返回DefaultEventPriority
+  //有lane被占用，但是优先级没有上面的两个高，返回DefaultEventPriority
   if (includesNonIdleWork(lane)) return DefaultEventPriority
 
   return IdleEventPriority

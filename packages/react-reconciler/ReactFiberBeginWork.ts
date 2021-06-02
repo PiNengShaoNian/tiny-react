@@ -128,7 +128,7 @@ const reconcileChildren = (
 }
 
 /**
- * 应为函数组件的fiber在创建时会被赋值为IndeterminateComponent
+ * 因为函数组件的fiber在创建时会被赋值为IndeterminateComponent
  * 所以首次渲染时Function组件会走这个逻辑
  * 详细逻辑可以看 react-reconciler\ReactFiber.ts下的
  * createFiberFromTypeAndProps函数
@@ -145,6 +145,7 @@ const mountIndeterminateComponent = (
   renderLanes: Lanes
 ): Fiber | null => {
   const props = workInProgress.pendingProps
+  //value为该Function Component返回的JSX对象
   const value = renderWithHooks(
     current,
     workInProgress,
@@ -179,6 +180,10 @@ const updateHostComponent = (
      * 在这不会为该文本创建实际的fiber节点而是只把他放到props.children
      * 待会更新props时会直接setTextContent把他设置到dom上，以避免还要创建
      * 一个fiber节点，并遍历他
+     * 注意只有<div>sdfsd dsfsd</div>，或者 <div>{1}</div>这种才算时
+     * 直接文本子节点<div>{1}{2}</div>这种children类型是数组其中1，和2都会
+     * 创建一个fiber节点与之对应，更多例子可以上[https://babeljs.io/repl/]
+     * 自行把玩
      */
     nextChildren = null
   } else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {

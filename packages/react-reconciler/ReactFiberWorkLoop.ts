@@ -219,8 +219,7 @@ const renderRootSync = (root: FiberRoot, lanes: Lanes) => {
 
 const commitRootImpl = (root: FiberRoot): null => {
   do {
-    //todo
-    // throw new Error('Not Implement')
+    flushPassiveEffects()
   } while (rootWithPendingPassiveEffects !== null)
 
   console.log('commitRoot')
@@ -292,8 +291,8 @@ const commitRootImpl = (root: FiberRoot): null => {
 
     //LayoutEffects阶段，在其中执行useLayoutEffect的create函数
     //这就是他和useEffect最大的区别，useLayoutEffect执行的时间是在dom操作完成后
-    //此时下一帧还没有开始渲染，此时如果做一些作画就非常适合，而如果把执行动画的
-    //操作放到useEffect中他是被Scheduler模块调度，被postMessage注册到宏任务里面的
+    //此时下一帧还没有开始渲染，此时如果做一些动画就非常适合，而如果把执行动画的
+    //操作放到useEffect中，因为他是被Scheduler模块调度，被postMessage注册到宏任务里面的
     //等到他执行时下一帧已经渲染出来，dom操作后的效果已经体现在了页面上了，
     //如果此时动画的起点还是前一帧的话页面就会出现闪烁的情况
     //详细信息可以查看examples下的LayoutEffect例子，试试分别使用
@@ -397,7 +396,6 @@ const ensureRootIsScheduled = (root: FiberRoot, currentTime: number) => {
   if (existingCallbackNode !== null) {
     //取消现存的callback,然后调度一个新的
     cancelCallback(existingCallbackNode as any)
-    // throw new Error('Not Implement')
   }
 
   //调度一个新回调
@@ -444,8 +442,8 @@ const performConcurrentWorkOnRoot = (
   root: FiberRoot,
   didTimeout: boolean
 ): null | Function => {
-  //执行到这我们已经知道实在一个react事件中了，可以把当前的eventTime清楚了，
-  //下一次更新的时候会计算一个新的
+  //react又要开始新的工作了,在此次工作完成后重新把控制权交给浏览器又算一个全新的开始，
+  //可以把当前的eventTime清除了，下一次更新的时候会计算一个新的
   currentEventTime = NoTimestamp
 
   const originalCallbackNode = root.callbackNode
@@ -605,15 +603,26 @@ const markUpdateLaneFromFiberToRoot = (
   }
 }
 
+/**
+ * 获得该次事件的开始时间
+ * @returns 该次事件的开始时间
+ */
 export const requestEventTime = () => {
   if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
-    return now()
+    //我们正处于React的工作流程中
+    //可以返回一个真实的时间,我们的实现没有用到该分支
+    throw new Error('Not Implement')
   }
 
+  //我们处于一个浏览器事件中，所有在同一个事件的handler中请求的开始时间
+  //都应该是相同的,比如在onClick的handler多次setState就会调用dispatchAction
+  //多次请求时间
   if (currentEventTime !== NoTimestamp) {
     return currentEventTime
   }
 
+  //这是react将控制权交还给浏览器后，产生的第一次更新
+  //计算一个新的开始时间
   currentEventTime = now()
   return currentEventTime
 }
@@ -640,7 +649,7 @@ export const scheduleUpdateOnFiber = (
   markRootUpdated(root, lane, eventTime)
 
   if (root === workInProgressRoot) {
-    // throw new Error('Not Implement')
+    throw new Error('Not Implement')
   }
 
   if (lane === SyncLane) {

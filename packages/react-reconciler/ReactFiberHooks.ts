@@ -54,6 +54,9 @@ export type Effect = {
   /**
    * 该Effect的标签，比如useEffect的就为HookPassive,
    * useLayoutEffect的就为HookLayout
+   * commitHookEffectListUnmount
+   * 函数用它来筛选不同类型的effect详细信息可以查看
+   * react-reconciler\ReactFiberCommitWork.ts下的commitHookEffectListUnmount函数
    */
   tag: HookFlags
   /**
@@ -61,7 +64,7 @@ export type Effect = {
    */
   create: () => (() => void) | void
   /**
-   * destroy函数，有create函数的返回值觉得，可以返回一个函数或者
+   * destroy函数，有create函数的返回值决定，可以返回一个函数或者
    * 选择什么都不返回
    */
   destroy: (() => void) | void
@@ -136,7 +139,9 @@ const dispatchAction = <S, A>(
   action: A
 ) => {
   const alternate = fiber.alternate
+  //获取此次更新的优先级
   const lane = requestUpdateLane(fiber)
+  //此次更新触发的事件
   const eventTime = requestEventTime()
 
   const update: Update<S, A> = {
@@ -241,27 +246,34 @@ const mountState = <S>(
   return [hook.memoizedState, dispatch]
 }
 
+/**
+ * 从current hook中复制获得workInProgressHook
+ * 每复制一个就将current hook向前移动至下一个hook
+ * @returns
+ */
 const updateWorkInProgressHook = (): Hook => {
-  /**
-   * 这个函数同时处理了普通的updates和render阶段updates两种情况，
-   * 所以我们可以假设，已经存在一个hook可clone,或者一个可以当作基础hook的，前一轮work-in-progress中的hook
-   * 当我们到达list的结尾时，必须把dispatcher切换至处理mount的
-   */
   let nextCurrentHook: null | Hook
 
   if (currentHook === null) {
+    //第一次调用该函数currentHook还为空，从current的memoizedState中
+    //得到第一个hook
     const current = currentlyRenderingFiber.alternate
     if (current !== null) {
       nextCurrentHook = current.memoizedState
     } else {
-      nextCurrentHook = null
+      throw new Error('Not Implement')
     }
   } else {
+    //不是第一个hook
     nextCurrentHook = currentHook.next
   }
 
-  let nextWorkInProgressHook: Hook | null
+  let nextWorkInProgressHook: Hook | null = null
 
+  //下面的if else是未使用到的代码nextWorkInProgressHook会一直保持null
+  //保留他的原因是为了能在触发special case的时候能获得报错时的调用栈
+  //信息，不仅在这里，整个代码里的所有手动抛出的Not Implement错误都是因为
+  //这个原因,这样使问题调试，和新功能的添加都变得非常容易
   if (workInProgressHook === null) {
     nextWorkInProgressHook = currentlyRenderingFiber.memoizedState
   } else {
@@ -269,9 +281,7 @@ const updateWorkInProgressHook = (): Hook => {
   }
 
   if (nextWorkInProgressHook !== null) {
-    workInProgressHook = nextWorkInProgressHook
-    nextWorkInProgressHook = workInProgressHook.next
-    currentHook = nextCurrentHook
+    throw new Error('Not Implement')
   } else {
     currentHook = nextCurrentHook!
     const newHook: Hook = {
@@ -542,12 +552,17 @@ const updateEffectImpl = (
     if (nextDeps !== null) {
       const prevDeps = prevEffect.deps
       if (areHookInputsEqual(nextDeps, prevDeps)) {
+        /**
+         * 判断该effect的依赖数组是否发生了变化，如果没有变化
+         * 就直接用复制之前effect的参数然后返回
+         */
         hook.memoizedState = pushEffect(hookFlags, create, destroy, nextDeps)
         return
       }
     }
   }
 
+  //依赖数组发生变化，为fiber节点打上标记
   currentlyRenderingFiber.flags |= fiberFlags
   hook.memoizedState = pushEffect(
     HookHasEffect | hookFlags,
@@ -564,6 +579,16 @@ const updateEffect = (
   return updateEffectImpl(PassiveEffect, HookPassive, create, deps)
 }
 
+/**
+ * 将一个effect接到该fiber组件的updateQueue中
+ * @param tag 该effect的类型，commitHookEffectListUnmount
+ * 函数用它来筛选不同类型的effect详细信息可以查看
+ * react-reconciler\ReactFiberCommitWork.ts下的commitHookEffectListUnmount函数
+ * @param create useEffect的第一个参数
+ * @param destroy 
+ * @param deps useEffect的第二个参数
+ * @returns
+ */
 const pushEffect = (
   tag: HookFlags,
   create: Effect['create'],
@@ -582,6 +607,7 @@ const pushEffect = (
     currentlyRenderingFiber.updateQueue as any
 
   if (componentUpdateQueue === null) {
+    //如果函数组件的updateQueue为空，就先初始化他
     componentUpdateQueue = {
       lastEffect: null,
     }
@@ -641,12 +667,18 @@ const updateLayoutEffect = (
   return updateEffectImpl(UpdateEffect, HookLayout, create, deps)
 }
 
+/**
+ * Mount流程中使用的Dispatcher
+ */
 const HooksDispatcherOnMount: Dispatcher = {
   useState: mountState,
   useEffect: mountEffect,
   useLayoutEffect: mountLayoutEffect,
 }
 
+/**
+ * Update流程中使用的Dispatcher
+ */
 const HooksDispatcherOnUpdate: Dispatcher = {
   useState: updateState,
   useEffect: updateEffect,
@@ -654,10 +686,27 @@ const HooksDispatcherOnUpdate: Dispatcher = {
 }
 
 /**
- * 用来清除一个fiber节点上的副作用标记
- * @param current 
- * @param workInProgress 
- * @param lanes 
+ * 用来清除一个fiber节点上的副作用标记，只有在一个
+ * 节点出现在render流程中，并且lanes不为空，但该节点的确没有
+ * 存在的工作，会调用该函数清除他的副作用，以结束更新流程
+ * 考虑下面的代码
+ * function Foo() {
+ *   const [state, setState] = useState(0)
+ *
+ *   setTimeout(() => {
+ *     setState(1)
+ *   })
+ *
+ *   return state
+ * }
+ * 这样无限dispatchAction的代码最后能终止,就多亏了
+ * 了这个函数,那么什么情况下会调用这个函数呢,只有该组件
+ * 所有state都没有都没有变更，且他的父组件也没有什么更新的情况下
+ * 才回调用这个函数，详细逻辑可以查看didReceiveUpdate这个变量的
+ * 相关逻辑
+ * @param current
+ * @param workInProgress
+ * @param lanes
  */
 export const bailoutHooks = (
   current: Fiber,
