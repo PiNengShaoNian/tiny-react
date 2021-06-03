@@ -1,5 +1,7 @@
 export type HookFlags = number
 
+export const NoFlags = /*   */ 0b000
+
 // 表示了是否因该触发改effect
 export const HasEffect = /* */ 0b001
 

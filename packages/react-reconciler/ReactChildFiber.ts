@@ -107,11 +107,11 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   /**
    * 更新一个fiber，如果前后他们的type没有变的话会复用该节点
    * 如果type改变了会创建一个全新节点
-   * @param returnFiber 
-   * @param current 
-   * @param element 
-   * @param lanes 
-   * @returns 
+   * @param returnFiber
+   * @param current
+   * @param element
+   * @param lanes
+   * @returns
    */
   const updateElement = (
     returnFiber: Fiber,
@@ -142,11 +142,11 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
   /**
    * 更新文本节点
-   * @param returnFiber 
-   * @param current 
-   * @param textContent 
-   * @param lanes 
-   * @returns 
+   * @param returnFiber
+   * @param current
+   * @param textContent
+   * @param lanes
+   * @returns
    */
   const updateTextNode = (
     returnFiber: Fiber,
@@ -205,6 +205,8 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       }
       throw new Error('Not Implement')
     }
+
+    if (newChild == null) return null
 
     throw new Error('Invalid Object type')
   }
@@ -289,6 +291,8 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
       }
     }
 
+    if (newChild == null) return null
+
     throw new Error('Not Implement')
   }
 
@@ -316,9 +320,9 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   /**
    * 创建一个map,将节点和key关联起来
    * 待会就能以O(1)的时间复杂度直接获得key对应的fiber节点
-   * @param returnFiber 
-   * @param currentFirstChild 
-   * @returns 
+   * @param returnFiber
+   * @param currentFirstChild
+   * @returns
    */
   const mapRemainingChildren = (
     returnFiber: Fiber,
@@ -363,12 +367,12 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
   /**
    * 尝试从map中找出新节点能复用的老节点
    * @param existingChildren Map<Key, Fiber>
-   * @param returnFiber 
+   * @param returnFiber
    * @param newIdx 如果该新节点没有显式的设置key将会使用他此时的index
-   * 在map中查找复用节点 
-   * @param newChild 新的JSX对象 
-   * @param lanes 
-   * @returns 
+   * 在map中查找复用节点
+   * @param newChild 新的JSX对象
+   * @param lanes
+   * @returns
    */
   const updateFromMap = (
     existingChildren: Map<string | number, Fiber>,
@@ -565,11 +569,11 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
   /**
    * diff函数的入口，更具不同子元素类型，进入不同的分支
-   * @param returnFiber 
-   * @param currentFirstChild 
-   * @param newChild 
-   * @param lanes 
-   * @returns 
+   * @param returnFiber
+   * @param currentFirstChild
+   * @param newChild
+   * @param lanes
+   * @returns
    */
   const reconcileChildFibers = (
     returnFiber: Fiber,

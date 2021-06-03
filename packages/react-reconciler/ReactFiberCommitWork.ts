@@ -32,6 +32,7 @@ import {
   HasEffect as HookHasEffect,
   Passive as HookPassive,
   Layout as HookLayout,
+  NoFlags as NoHookEffect,
 } from './ReactHookEffectTags'
 import { Fiber, FiberRoot } from './ReactInternalTypes'
 import {
@@ -95,8 +96,8 @@ const commitPassiveUnmountInsideDeletedTreeOnFiber = (
 ): void => {
   switch (current.tag) {
     case FunctionComponent:
-      throw new Error('Not Implement')
-
+      commitHookEffectListUnmount(HookPassive, current)
+      break
     default:
       break
   }
@@ -384,6 +385,29 @@ const commitUnmount = (
   nearestMountedAncestor: Fiber
 ): void => {
   switch (current.tag) {
+    case FunctionComponent: {
+      const updateQueue: FunctionComponentUpdateQueue | null =
+        current.updateQueue as any
+
+      if (updateQueue !== null) {
+        const lastEffect = updateQueue.lastEffect
+
+        if (lastEffect !== null) {
+          const firstEffect = lastEffect.next
+          let effect = firstEffect
+
+          do {
+            const { destroy, tag } = effect
+            if (destroy !== undefined) {
+              if ((tag & HookLayout) !== NoHookEffect) {
+                destroy()
+              }
+            }
+          } while (effect !== firstEffect)
+        }
+      }
+      return
+    }
     case HostComponent: {
       //todo safelyDetachRef
       return
@@ -480,14 +504,24 @@ const unmountHostComponents = (
         removeChild(currentParent, node.stateNode)
       }
     } else {
-      throw new Error('Not Implement')
+      commitUnmount(finishedRoot, node, nearestMountedAncestor)
+      //继续访问他的子节点，因为可能还会找到更多的host components
+      if (node.child !== null) {
+        node.child.return = node
+        node = node.child
+        continue
+      }
     }
 
-    if (node === current) {
-      return
-    }
+    if (node === current) return
 
-    throw new Error('Not Implement')
+    while (node.sibling === null) {
+      if (node.return === null || node.return === current) return
+
+      node = node.return
+    }
+    node.sibling.return = node.return
+    node = node.sibling
   }
 }
 

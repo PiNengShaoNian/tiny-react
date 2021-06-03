@@ -14,8 +14,8 @@ const CHUNK_SIZE = 1e4 / 10
  * fiber是最小的工作粒度，如果要保证render过程中能保证浏览器能
  * 处于交互的状态就得保证一个fiber render的过程不会太耗
  * 事件，所以可以根据机能设置合适的CHUNK_SIZE
- * @param param0 
- * @returns 
+ * @param param0
+ * @returns
  */
 const Chunk = ({ start }: { start: number }): any => {
   const end = Math.min(data.length, start + CHUNK_SIZE)
@@ -55,7 +55,7 @@ export const TimeSlicingDemo = () => {
       <br />
       <input placeholder="输入点东西，看看交互有没有被阻塞" />
       <br />
-      {isShowBigList ? <BigList /> : ''}
+      {isShowBigList ? <BigList /> : null}
     </div>
   )
 }

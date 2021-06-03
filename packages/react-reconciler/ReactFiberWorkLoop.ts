@@ -135,9 +135,8 @@ const performUnitOfWork = (unitOfWork: Fiber): void => {
   next = beginWork(current, unitOfWork, subtreeRenderLanes)
 
   unitOfWork.memoizedProps = unitOfWork.pendingProps
-  //进行的时深度遍历，next为null说明该节点没有子节点了，对其进行归过程
+  //进行的是深度优先遍历，next为null说明该节点没有子节点了，对其进行归过程
   if (next === null) {
-    //todo completeUnitofWork
     completeUnitOfWork(unitOfWork)
   } else {
     //将workInProgress赋值为unitOfWork的第一个子节点
