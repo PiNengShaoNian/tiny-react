@@ -637,7 +637,10 @@ export const cloneChildFibers = (
 ): void => {
   if (workInProgress.child === null) return
 
+  //能走到这里说明，此时此刻workInProgress和current的child时严格相等的
+  //所以从workInProgress里读取的child也是currentChild
   let currentChild = workInProgress.child
+
   let newChild = createWorkInProgress(currentChild, currentChild.pendingProps)
   workInProgress.child = newChild
 

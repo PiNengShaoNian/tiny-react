@@ -96,7 +96,7 @@ export const LayoutEffectDemo = () => {
       previousLayoutInfo[gridItems[i].textContent as any] =
         gridItems[i].getBoundingClientRect()
     }
-    console.log(previousLayoutInfo)
+    console.log(previousLayoutInfo, gridItems)
     shuffleArray(next)
     setList(next)
   }

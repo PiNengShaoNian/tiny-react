@@ -21,6 +21,31 @@ const NotReuseFiberWhenTypeChange = () => {
   )
 }
 
+const TriggerUpdate = () => {
+  const [count, setCount] = useState(0)
+
+  return (
+    <div>
+      {count}
+      <button
+        onClick={() => {
+          setCount(count + 1)
+        }}
+      >
+        increment
+      </button>
+    </div>
+  )
+}
+
+const BubbleFlagsOnChildrenOfBailoutComponent = () => {
+  return (
+    <ul>
+      <TriggerUpdate />
+    </ul>
+  )
+}
+
 const ResetContentWhenTextChildrenChangeToOther = () => {
   const [isShowText, setIsShowText] = useState(false)
 
@@ -65,6 +90,9 @@ export const ChildrenReconcilerDemo = () => {
       <br />
       UpdateTextNodeDemo
       <UpdateTextNodeDemo />
+      <br />
+      BubbleFlagsOnChildrenOfBailoutHostComponent
+      <BubbleFlagsOnChildrenOfBailoutComponent />
     </div>
   )
 }

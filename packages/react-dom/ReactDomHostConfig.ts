@@ -33,6 +33,13 @@ export type UpdatePayload = unknown[]
 
 export type Type = string
 
+/**
+ * 判断该节点是否可以直接将children当作直接文本节点处理
+ * 比如节点的类型为textarea时，或者children的类型为string或者number
+ * @param type 
+ * @param props 
+ * @returns 
+ */
 export const shouldSetTextContent = (type: string, props: Props): boolean => {
   return (
     type === 'textarea' ||
@@ -190,6 +197,7 @@ const diffProperties = (
   }
 
   for (propKey in nextProps) {
+    //该循环会处理增加和被修改的属性
     const nextProp = nextProps[propKey]
     const lastProp = lastProps !== null ? lastProps[propKey] : undefined
 
@@ -240,6 +248,10 @@ const diffProperties = (
     } else if (registrationNameDependencies.hasOwnProperty(propKey)) {
       if (!updatePayload) updatePayload = []
     } else if (propKey === CHILDREN) {
+      //这里是直接文本节点能正常更新的关键，因为他们没有对应的fiber节点
+      //所以不能靠打上Update标签这种形式去更新他自身的文本，他只能在
+      //父节点的updateQueue(也就是这的updatePayload)中加上 children属性
+      //待会该节点会更具updateQueue中children的新内容重新设置文本
       if (typeof nextProp === 'string' || typeof nextProp === 'number') {
         ;(updatePayload = updatePayload || []).push(propKey, '' + nextProp)
       }
@@ -255,6 +267,20 @@ const diffProperties = (
   return updatePayload
 }
 
+
+/**
+ * 会返回类似这样的一个数组 ['style', {background: 'red'}, 'children', 'newText']
+ * 2n存储属性名，2n+1存储新的属性值
+ * 该数组里面的属性都是dom真正拥有的属性，
+ * 如果是类似于onClick这种react事件不会在数组中添加相关的属性，只会返回一个空数组
+ * 待会更新的时候会判断到updateQueue不为null所以会进行该节点的更新流程
+ * onClick的handler会通过updateFiberProps得到更新
+ * @param domElement 
+ * @param type 
+ * @param oldProps 
+ * @param newProps 
+ * @returns 
+ */
 export const prepareUpdate = (
   domElement: Element,
   type: string,

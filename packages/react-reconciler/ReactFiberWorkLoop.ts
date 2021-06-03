@@ -84,6 +84,9 @@ let workInProgressRootRenderLanes: Lanes = NoLanes
 let currentEventTime: number = NoTimestamp
 
 let rootDoesHavePassiveEffects: boolean = false
+/**
+ * 当前包含PassiveEffect(useEffect产生的effect)的FiberRoot
+ */
 let rootWithPendingPassiveEffects: FiberRoot | null = null
 
 export let subtreeRenderLanes: Lanes = NoLanes
@@ -106,7 +109,7 @@ const completeUnitOfWork = (unitOfWork: Fiber): void => {
 
     const siblingFiber = completedWork.sibling
 
-    //由于是深度遍历，当一个节点的"归阶段"完成后立马进入其下一个兄弟节点的递阶段
+    //由于是深度优先遍历，当一个节点的"归阶段"完成后立马进入其下一个兄弟节点的递阶段
     if (siblingFiber !== null) {
       workInProgress = siblingFiber
       return
@@ -159,11 +162,14 @@ const prepareFreshStack = (root: FiberRoot, lanes: Lanes) => {
   enqueueInterleavedUpdates()
 }
 
+/**
+ * 同步执行PassiveEffects的destory和create函数
+ * @returns 
+ */
 const flushPassiveEffectsImpl = () => {
   if (rootWithPendingPassiveEffects === null) return false
 
   const root = rootWithPendingPassiveEffects
-  // const lanes =
   rootWithPendingPassiveEffects = null
 
   const prevExecutionContext = executionContext
@@ -243,7 +249,7 @@ const commitRootImpl = (root: FiberRoot): null => {
    * 的childLanes中
    */
   let remainingLanes = mergeLanes(finishedWork.lanes, finishedWork.childLanes)
-  //进行收尾工作lanes
+  //进行lanes的收尾工作
   markRootFinished(root, remainingLanes)
 
   workInProgressRoot = null

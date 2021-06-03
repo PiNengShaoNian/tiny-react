@@ -65,11 +65,11 @@ export const createHostRootFiber = (tag: RootTag): Fiber => {
 
 /**
  * 创建一个fiber节点
- * @param tag 
- * @param pendingProps 
- * @param key 
- * @param mode 
- * @returns 
+ * @param tag
+ * @param pendingProps
+ * @param key
+ * @param mode
+ * @returns
  */
 export const createFiber = (
   tag: WorkTag,
@@ -92,6 +92,59 @@ export const createWorkInProgress = (
   let workInProgress = current.alternate
 
   if (workInProgress === null) {
+    //我们在这里使用了双缓存技巧，因为知道只需要两个版本的树
+    //我们可以把当前树中没有用到的节点拿出来复用，并且这些节点是只有需要时才创建的
+    //去避免去为那些永远不会更新的节点创建额外的对象,
+    //如果需要的话这也让我们可以再利用内存
+    /**
+     * 考虑下面的App组件，帮你理解上面的话
+     * const TriggerUpdate = () => {
+     *   const [count, setCount] = useState(0)
+     * 
+     *   return (
+     *     <div>
+     *       {count}
+     *       <button
+     *         onClick={() => {
+     *           setCount(count + 1)
+     *         }}
+     *       >
+     *         increment
+     *       </button>
+     *     </div>
+     *   )
+     * }
+     *
+     * const App = () => {
+     *  return (
+     *    <div id="container">
+     *      <div style={{
+     *         background: 'red',
+     *        }}
+     *        id="static"
+     *      >
+     *        Static Node
+     *        <div>Static Node</div>
+     *      </div>
+     *      <TriggerUpdate />
+     *    </div>
+     *  )
+     *}
+     * 下面会使用jquery选择器的方式指明我们说的时哪个fiber节点
+     * 比如$('#container')就表示哪个id为container的div所对应的fiber
+     * 虽然App中的TriggerUpdate会触发更新但是他冒泡的lanes
+     * 并不会影响到并不在他冒泡路径上和他同级的
+     * $('#static')节点所以他的lanes和childLanes一直都是NoLanes，
+     * 因为也知道他的父级节点$('#container') div也没有更新，
+     * 所以在创建$('#static') div节点时复用前一次的props，
+     * 当接下来进行$('#static')的beginWork时，由于前后props没变且不包含lanes
+     * 会执行他的bailoutOnAlreadyFinishedWork逻辑
+     * 即使此次更新中$('#static')对应的jsx对象的style属性是全新的对象，
+     * 在执行bailout逻辑中发现他的childLanes为NoLanes所以直接返回，不在复制他的child
+     * 进行render工作了，所以$('#static')节点的子节点只有在首次mount时会被创建一次，
+     * 对于这些静态节点，在整个过程中，两颗fiber树始终指向相同的对象
+     */
+    
     workInProgress = createFiber(
       current.tag,
       pendingProps,
@@ -127,11 +180,11 @@ export const createWorkInProgress = (
  * 根据JSX对象的type和props创建一个fiber节点
  * @param type 可以为string比如div,p可以为函数，比如函数组件
  * 可以为类比如类组件可以为Symbol比如React.Fragment
- * @param key 
- * @param pendingProps 
+ * @param key
+ * @param pendingProps
  * @param mode fiber树的模式比如Concurrent,Legacy
- * @param lanes 
- * @returns 
+ * @param lanes
+ * @returns
  */
 export const createFiberFromTypeAndProps = (
   type: any,

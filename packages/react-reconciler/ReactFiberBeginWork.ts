@@ -220,9 +220,12 @@ export const beginWork = (
     const newProps = workInProgress.pendingProps
 
     if (oldProps !== newProps) {
+      //如果props改变了标记这个fiber需要进行工作
       didReceiveUpdate = true
     } else if (!includesSomeLane(renderLanes, updateLanes)) {
       didReceiveUpdate = false
+      //这个fiber没有要进行的工作，执行其bailout逻辑，而不用继续
+      //begin他的阶段
       switch (workInProgress.tag) {
         case HostRoot:
           break
@@ -240,6 +243,7 @@ export const beginWork = (
       return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes)
     }
   } else {
+    //current不存在
     didReceiveUpdate = false
   }
 

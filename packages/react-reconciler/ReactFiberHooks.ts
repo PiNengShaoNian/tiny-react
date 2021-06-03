@@ -171,8 +171,10 @@ const dispatchAction = <S, A>(
     throw new Error('Not Implement')
   } else {
     //在Concurrent Mode中，如果在一个时间切片后，有更新中途加入，会被加入到
-    //interleaved queue中，等到prepareFreshStack调用时会将interleaved queue加入到
-    //pending queue中，这两个分支的逻辑是等价的删除isInterleavedUpdate分支并不
+    //interleaved queue中，等到下一次进行新一轮render阶段时
+    //注意是新一轮render，不是下一个时间切片
+    //会调用prepareFreshStack方法清除之前产生的副作用，在此方法中会将interleaved queue加入到
+    //pending queue中，目前这两个分支的逻辑是等价的删除isInterleavedUpdate分支并不
     //影响代码运行
     if (isInterleavedUpdate(fiber, lane)) {
       const interleaved = queue.interleaved
@@ -414,6 +416,7 @@ const updateReducer = <S, I, A>(
         }
 
         /**
+         * 在beginWork开始时currentlyRenderingFiber.lanes会被置为lanes
          *该更新被跳过，在fiber上留下他的Lane待会completeWork的时候会将它冒泡到HostRoot,
          * 以能在下一轮更新时重新被执行
          */
