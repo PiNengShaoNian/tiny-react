@@ -56,8 +56,6 @@ export const LayoutEffectDemo = () => {
       indexKeyToElementMap.set(+gridItems[i].textContent!, gridItems[i])
     }
 
-    console.log(currentLayoutInfo)
-
     for (let i = 0; i < currentLayoutInfo.length; ++i) {
       const firstRect = previousLayoutInfo[i]
       const lastRect = currentLayoutInfo[i]
@@ -96,7 +94,6 @@ export const LayoutEffectDemo = () => {
       previousLayoutInfo[gridItems[i].textContent as any] =
         gridItems[i].getBoundingClientRect()
     }
-    console.log(previousLayoutInfo, gridItems)
     shuffleArray(next)
     setList(next)
   }
