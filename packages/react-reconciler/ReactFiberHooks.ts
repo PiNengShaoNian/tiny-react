@@ -150,12 +150,21 @@ const dispatchAction = <S, A>(
     lane,
   }
   if (
+    //由于fiber是使用bind绑定的首次mount时创建的fiber节点
+    //而在每次更新都会导致current和workInProgress做一次轮换
+    //所以现在也不知道fiber是在workInProgress树中还是在current树中
+    //而currentlyRenderingFiber是处于workInProgress树中的
+    //所以必须比较同时比较一下fiber和他的alternate
+    //比较就能知道是不是render阶段产生的更新
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
   ) {
     /**
      * render阶段产生的更新(也就是在调用Function组件的过程中产生的更新)，暂未实现
-     * 比如以下组件在调用时就会产生这样的更新,这样的更新如果一直产生react就会一直重复调用
+     * 比如以下组件在调用时就会产生这样的更新,因为在render过程，中在执行Foo组件前
+     * 会将currentlyRenderingFiber置为Foo对应的fiber节点,如果时普通的浏览器事件中
+     * 调用的dispatchAction就不会经过这个流程currentlyRenderingFiber就会是null
+     * 这样的更新如果一直产生react就会一直重复调用
      * 该组件，直到他不在产生这种更新为止，所以setCount如果不写在任何逻辑语句里会导致无限循环
      * function Foo() {
      *   const [count, setCount] = useState(0)
@@ -200,6 +209,10 @@ const dispatchAction = <S, A>(
       fiber.lanes === NoLanes &&
       (alternate === null || alternate.lanes === NoLanes)
     ) {
+      //提前bailout的路径,如果这次更新的action和前一次的state是
+      //一致的直接退出
+
+      //在我们的实现中此处的lastRenderedReducer永远为basicReducer
       const lastRenderedReducer = queue.lastRenderedReducer
 
       if (lastRenderedReducer !== null) {
@@ -588,7 +601,7 @@ const updateEffect = (
  * 函数用它来筛选不同类型的effect详细信息可以查看
  * react-reconciler\ReactFiberCommitWork.ts下的commitHookEffectListUnmount函数
  * @param create useEffect的第一个参数
- * @param destroy 
+ * @param destroy
  * @param deps useEffect的第二个参数
  * @returns
  */
@@ -719,5 +732,12 @@ export const bailoutHooks = (
   workInProgress.updateQueue = current.updateQueue
   workInProgress.flags &= ~(PassiveEffect | UpdateEffect)
 
+  /**
+   * 在进入beginWork是workInProgress上的pending lanes会被清除，
+   * 但是current上的lanes会一直存在，而只清除workInProgress上的lanes
+   * 是远远不够的他会只要两颗fiber树中其中的一个节点lanes还不为NoLanes
+   * 都会导致不会进入提前的 bailout路径，最终不停的调用scheduleUpdateOnFiber
+   * 使得上面的那种Foo函数无限更新
+   */
   current.lanes = removeLanes(current.lanes, lanes)
 }

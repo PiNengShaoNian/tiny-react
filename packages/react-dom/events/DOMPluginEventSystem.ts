@@ -19,8 +19,8 @@ import { AnyNativeEvent } from './PluginModuleType'
 import * as SimpleEventPlugin from './plugins/SimpleEventPlugin'
 import * as ChangeEventPlugin from './plugins/ChangeEventPlugin'
 import { createEventListenerWrapperWithPriority } from './ReactDOMEventListener'
-import { batchedEventUpdates } from './ReactDOMUpdateBatching'
 import { ReactSyntheticEvent } from './ReactSyntheticEventType'
+import { batchedEventUpdates } from '../../react-reconciler/ReactFiberReconciler'
 
 const listeningMarker = '_reactListening' + Math.random().toString(36).slice(2)
 
@@ -357,6 +357,5 @@ export const dispatchEventForPluginEventSystem = (
         targetContainer
       ),
     null,
-    null
   )
 }

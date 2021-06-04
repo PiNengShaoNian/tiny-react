@@ -361,6 +361,12 @@ const commitBeforeMutationEffectsOnFiber = (finishedWork: Fiber): void => {
   //todo Snapshot
 }
 
+/**
+ * BeforeMutation阶段入口
+ * 在我们的实现中，并没有在这个阶段干什么事情可以忽略
+ * @param root
+ * @param firstChild finishedWork
+ */
 export const commitBeforeMutationEffects = (
   root: FiberRoot,
   firstChild: Fiber
@@ -370,6 +376,11 @@ export const commitBeforeMutationEffects = (
   commitBeforeMutationEffects_begin()
 }
 
+/**
+ * Mutation阶段入口
+ * @param root
+ * @param firstChild finishedWork
+ */
 export const commitMutationEffects = (
   root: FiberRoot,
   firstChild: Fiber
@@ -379,6 +390,14 @@ export const commitMutationEffects = (
   commitMutationEffects_begin(root)
 }
 
+/**
+ * 在该节点被删除前，调用它的副作用清除函数
+ * (也就是useEffect,useLayoutEffect第一个函数参数的返回值)，如果有的话
+ * @param finishedRoot
+ * @param current
+ * @param nearestMountedAncestor
+ * @returns
+ */
 const commitUnmount = (
   finishedRoot: FiberRoot,
   current: Fiber,
@@ -434,7 +453,7 @@ const commitNestedUnmounts = (
 ) => {
   let node: Fiber = root
 
-  //下面的代码相当于dfs的循环版本
+  //下面的代码相当于dfs的迭代版本
   while (true) {
     commitUnmount(finishedRoot, node, nearestMountedAncestor)
 
@@ -461,6 +480,14 @@ const commitNestedUnmounts = (
   }
 }
 
+/**
+ * 以current为根的子fiber树即将被删除，将他里面的包含的host component
+ * 从dom树中删除
+ * @param finishedRoot HostRoot
+ * @param current 要删除的子树的根节点
+ * @param nearestMountedAncestor
+ * @returns
+ */
 const unmountHostComponents = (
   finishedRoot: FiberRoot,
   current: Fiber,
@@ -475,16 +502,50 @@ const unmountHostComponents = (
 
   while (true) {
     if (!currentParentIsValid) {
+      /**
+       * 这里的逻辑只会在第一轮循环时进来一次
+       * 在这里找到该待删除的子树的最近的上层dom节点
+       * 考虑以下例子
+       * function ChildToDelete() {
+       *    return <div>ChildToDelete</div>
+       * }
+       *
+       * function Wrapper({children}) {
+       *    return children
+       * }
+       *
+       * function Foo() {
+       *   const [isShow, setIsShow] = useState(true)
+       *
+       *   return <div id="container">
+       *        <Wrapper>
+       *          {isShow ? <ChildToDelete /> : null}
+       *        </Wrapper>
+       *        <button onClick={() => setIsShow(!isShow)}>toggle</button>
+       *    </div>
+       * }
+       * 当点击toggle按钮时ChildToDelete函数组件会被删除,此时会沿着ChildToDelete
+       * 对应的fiber节点向上查找一个HostComponent类型的节点,不难看出要找的就是那个
+       * id为container的div节点而不是Wrapper，因为Wrapper只在React中存在
+       * 实际上ChildTODelete子树里面的dom节点是挂载在$('#container')上的
+       *
+       */
       let parent = node.return
 
       findParent: while (true) {
         const parentStateNode = parent?.stateNode
         switch (parent?.tag) {
           case HostComponent:
+            //向上查找的过程中遇到一个HostComponet，就直接返回
             currentParent = parentStateNode
             currentParentIsContainer = false
             break findParent
           case HostRoot:
+            //如果已经达到HostRoot，表明了要删除的子树中的dom是直接挂在
+            //container上的，那什么是container呢？
+            //container就是 ReactDOM.render的第二个参数
+            //比如ReactDOM.render(<div></div>, element)
+            //在这里他就是element这个dom元素
             currentParent = parentStateNode.containerInfo
             currentParentIsContainer = true
             break findParent
@@ -495,6 +556,8 @@ const unmountHostComponents = (
       currentParentIsValid = true
     }
 
+    //如果要删除的的子树的根节点直接是一个HostComponent,从dom树中删除他对应
+    //的元素
     if (node.tag === HostComponent || node.tag === HostText) {
       commitNestedUnmounts(finishedRoot, node, nearestMountedAncestor)
 
@@ -504,8 +567,9 @@ const unmountHostComponents = (
         removeChild(currentParent, node.stateNode)
       }
     } else {
-      commitUnmount(finishedRoot, node, nearestMountedAncestor)
+      //该节点不是HostComponent
       //继续访问他的子节点，因为可能还会找到更多的host components
+      commitUnmount(finishedRoot, node, nearestMountedAncestor)
       if (node.child !== null) {
         node.child.return = node
         node = node.child
@@ -789,12 +853,18 @@ export const commitLayoutEffects = (
   commitLayoutEffects_begin(finishedWork, root, 0)
 }
 
+/**
+ * 各种节点的更新工作的入口，在这里会将各种节点的更新
+ * 跳入到更细粒度的更新函数中
+ * @param current
+ * @param finishedWork
+ * @returns
+ */
 const commitWork = (current: Fiber | null, finishedWork: Fiber): void => {
   switch (finishedWork.tag) {
     case FunctionComponent:
+      //LayoutEffect的销毁函数在Mutation阶段被调用
       commitHookEffectListUnmount(HookLayout | HookHasEffect, finishedWork)
-      // throw new Error('Not Implement')
-
       return
     case HostComponent: {
       const instance: Element = finishedWork.stateNode
@@ -897,7 +967,6 @@ const commitMutationEffects_begin = (root: FiberRoot): void => {
   while (nextEffect !== null) {
     const fiber = nextEffect
 
-    // todo 删除fiber节点
     const deletions = fiber.deletions
     if (deletions !== null) {
       for (let i = 0; i < deletions.length; ++i) {

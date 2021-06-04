@@ -6,6 +6,7 @@ import {
   setCurrentUpdatePriority,
 } from '../../react-reconciler/ReactEventPriorities'
 import { Lane } from '../../react-reconciler/ReactFiberLane'
+import { discreteUpdates } from '../../react-reconciler/ReactFiberReconciler'
 import { Container } from '../ReactDomRoot'
 import { DOMEventName } from './DOMEventNames'
 import { dispatchEventForPluginEventSystem } from './DOMPluginEventSystem'
@@ -13,7 +14,6 @@ import { EventSystemFlags } from './EventSystemFlags'
 import { getEventTarget } from './getEventTarget'
 import { AnyNativeEvent } from './PluginModuleType'
 import { getClosestInstanceFromNode } from './ReactDOMComponentTree'
-import { discreteUpdates } from './ReactDOMUpdateBatching'
 
 const dispatchDiscreteEvent = (
   domEventName: DOMEventName,

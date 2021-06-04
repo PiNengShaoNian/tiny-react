@@ -75,7 +75,9 @@ export type Fiber = {
    */
   sibling: Fiber | null
   /**
-   * 从update计算而来的状态
+   * 在我们的实现中只有Function组件对应的fiber节点使用到了该属性
+   * function组件会用他来存储hook组成的链表,在react中很多数据结构
+   * 都有该属性，注意不要弄混了
    */
   memoizedState: any
   /**

@@ -164,7 +164,7 @@ const prepareFreshStack = (root: FiberRoot, lanes: Lanes) => {
 
 /**
  * 同步执行PassiveEffects的destory和create函数
- * @returns 
+ * @returns
  */
 const flushPassiveEffectsImpl = () => {
   if (rootWithPendingPassiveEffects === null) return false
@@ -316,6 +316,7 @@ const commitRootImpl = (root: FiberRoot): null => {
     rootWithPendingPassiveEffects = root
   }
 
+  //root上可能还有剩余的工作，在调度一次
   ensureRootIsScheduled(root, now())
 
   return null
