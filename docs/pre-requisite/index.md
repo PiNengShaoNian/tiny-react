@@ -5,3 +5,4 @@
 
 ##内容列表
 - [位运算](./bit-manipulation.md)
+- [优先队列](./priority-queue.md)

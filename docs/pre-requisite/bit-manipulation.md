@@ -1,9 +1,9 @@
-#位运算相关知识，能让你更容易理解lanes的相关代码
+# 位运算相关知识，能让你更容易理解lanes的相关代码
 
 > :warning: 注意，在这里已经假设你知道位运算符的作用了，如果还不知道可以看[MDN的解释](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Guide/Expressions_and_Operators#%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6)
 
 ___
-##问题1 .实现`gitBit(num: number, i: number):boolean `函数
+## 问题1 .实现`gitBit(num: number, i: number):boolean `函数
 该函数会会根据数字num，第i个bit的值返回一个布尔值，如果第i个bit为1则返回true否则返回false(i从零开始)
 
 ### 示例1
@@ -28,7 +28,7 @@ const getBit = (num: number, i: number): boolean => {
   return (num & (1 << i)) !== 0
 }
 ```
-###解释
+### 解释
 要取num的第i位bit，只需让num和除了第i位为1其他位全为0的数按位与，然后在判断他是否为零即可，如果为零表示该bit为0，如果不为零则表示为1
 这种数可以通过`<<`轻松获得
  `1 << 0` 等价于 `0b0000000000000000000000000000001`
@@ -37,7 +37,7 @@ const getBit = (num: number, i: number): boolean => {
  `1 << 3` 等价于 `0b0000000000000000000000000001000`
 ___
 
-##问题2. 实现`setBit(num: number, i: number): number`函数
+## 问题2. 实现`setBit(num: number, i: number): number`函数
 该函数会将数字num，第i位bit置为1并返回
 
 ### 示例1
@@ -59,7 +59,7 @@ const setBit = (num: number, i: number): number => {
   return (1 << i) | num
 }
 ```
-###解释
+### 解释
 要想将num的第i位bit设为1，只需让num和除了第i位为1其他位全为0的数按位或即可
 这种数可以通过`<<`轻松获得
  `1 << 0` 等价于 `0b0000000000000000000000000000001`
@@ -68,7 +68,7 @@ const setBit = (num: number, i: number): number => {
  `1 << 3` 等价于 `0b0000000000000000000000000001000`
 ___
 
-##问题3. 实现`clearBit(num: number, i: number): number`函数
+## 问题3. 实现`clearBit(num: number, i: number): number`函数
 该函数会将数字num，第i位bit置为0并返回
 
 ### 示例1
@@ -91,7 +91,7 @@ const clearBit = (num: number, i: number): number => {
   return num & mask
 }
 ```
-###解释
+### 解释
 要想将num的第i位bit设为0，只需让num和除了第i位为0其他位全为1的数按位与即可
 这种数可以通过两个步骤获得，先通过`<<`获得除了第i位为1其他全为零的数再通过`~`将他反转即可
 第一步
@@ -100,7 +100,7 @@ const clearBit = (num: number, i: number): number => {
  `~(1<<3)`等价于`0b1111111111111111111111111110111`
 ___
 
-##问题4. 二进制数组转整数
+## 问题4. 二进制数组转整数
 给你一个数组。数组中的值不是 0 就是 1。已知此数组是一个整数数字的二进制表示形式。
 请你返回该数组所表示数字的 十进制值 。
 
@@ -129,13 +129,13 @@ const getDecimalValue = (head: number[]): number => {
   return ans
 }
 ```
-###解释
+### 解释
 通过位移和或操作注意将二进制位设置到ans上即可
 考虑如下例子，当输入为`[1,1]`时
 第一轮循环先将0位设置1 此时的 `ans = 0b1`
 第二轮先将ans左移一位此时`ans = 0b10`,再将ans的第零位设为1此时`ans = 0b11`
 ___
 
-##相关引用
+## 相关引用
 - [程序员面试金典 第6版 P94 位操做](http://product.dangdang.com/27941258.html)
 - [leetcode 1290. 二进制链表转整数](https://leetcode-cn.com/problems/convert-binary-number-in-a-linked-list-to-integer/)
