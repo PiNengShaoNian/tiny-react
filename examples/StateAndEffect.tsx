@@ -19,6 +19,8 @@ export const StateEffectDemo = () => {
     console.log('num2', num2)
   }, [num2])
 
+  console.log('render')
+
   return (
     <span>
       <button onClick={() => setNum(num + 1)}>num-{num}</button>

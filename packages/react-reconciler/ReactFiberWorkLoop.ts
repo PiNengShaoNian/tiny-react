@@ -227,7 +227,6 @@ const commitRootImpl = (root: FiberRoot): null => {
     flushPassiveEffects()
   } while (rootWithPendingPassiveEffects !== null)
 
-  console.log('commitRoot')
   const finishedWork = root.finishedWork
 
   if (finishedWork === null) return null
@@ -655,7 +654,7 @@ export const scheduleUpdateOnFiber = (
   markRootUpdated(root, lane, eventTime)
 
   if (root === workInProgressRoot) {
-    throw new Error('Not Implement')
+    // throw new Error('Not Implement')
   }
 
   if (lane === SyncLane) {
