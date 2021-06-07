@@ -34,14 +34,15 @@ export const HostRoot = 3 // Root of a host tree. Could be nested inside another
 /**
  * 文字节点
  */
-export const HostText = 6;
+export const HostText = 6
 /**
  * 在每经过reconcile之前class和function都是该类组件
  */
-export const IndeterminateComponent = 2; // Before we know whether it is function or class
-export const ClassComponent = 1;
+export const IndeterminateComponent = 2 // Before we know whether it is function or class
+export const ClassComponent = 1
 /**
  * div span之类的组件
  */
-export const HostComponent = 5;
-
+export const HostComponent = 5
+export const MemoComponent = 14
+export const SimpleMemoComponent = 15

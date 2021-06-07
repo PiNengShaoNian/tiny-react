@@ -54,7 +54,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
 
     while (child !== null) {
       if (child.key === key) {
-        if (child.type === element.type) {
+        if (child.elementType === element.type) {
           deleteRemainingChildren(returnFiber, child.sibling)
           const existing = useFiber(child, element.props)
           existing.return = returnFiber
@@ -120,7 +120,7 @@ const ChildReconciler = (shouldTrackSideEffects: boolean) => {
     lanes: Lanes
   ): Fiber => {
     if (current !== null) {
-      if (current.type === element.type) {
+      if (current.elementType === element.type) {
         const existing = useFiber(current, element.props)
         existing.return = returnFiber
         return existing

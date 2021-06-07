@@ -5,7 +5,7 @@ import {
   Props,
   Type,
 } from '../react-dom/ReactDOMHostConfig'
-import { NoFlags, Update } from './ReactFiberFlags'
+import { NoFlags, StaticMask, Update } from './ReactFiberFlags'
 import { appendInitialChild, createInstance } from './ReactFiberHostConfig'
 import { mergeLanes, NoLanes } from './ReactFiberLane'
 import { Fiber } from './ReactInternalTypes'
@@ -15,6 +15,7 @@ import {
   HostRoot,
   HostText,
   IndeterminateComponent,
+  SimpleMemoComponent,
 } from './ReactWorkTags'
 
 /**
@@ -80,9 +81,10 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
   let subtreeFlags = NoFlags
   let newChildLanes = NoLanes
 
-  //目前源码中会根据是否didBailout为该节点加上StaticMask但是
-  //并没有发现StaticMask的实际用途所以现在两个分支的代码
-  //暂时是一摸一样的
+  //在这会根据是否didBailout选择是否只保留该节点
+  //subtreeFlags,flags中的StaticMask我们的实现中并没有
+  //使用到StaticMask所以只保留StaticMask相当于把subtreeFlags,flags
+  //清除
   if (!didBailout) {
     let child = completedWork.child
 
@@ -108,8 +110,8 @@ const bubbleProperties = (completedWork: Fiber): boolean => {
         mergeLanes(child.lanes, child.childLanes)
       )
 
-      subtreeFlags |= child.subtreeFlags
-      subtreeFlags |= child.flags
+      subtreeFlags |= child.subtreeFlags & StaticMask
+      subtreeFlags |= child.flags & StaticMask
 
       child.return = completedWork
 
@@ -183,6 +185,7 @@ export const completeWork = (
   switch (workInProgress.tag) {
     case IndeterminateComponent:
     case FunctionComponent:
+    case SimpleMemoComponent:
       bubbleProperties(workInProgress)
       return null
     case HostRoot: {

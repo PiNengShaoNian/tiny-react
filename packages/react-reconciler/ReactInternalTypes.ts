@@ -89,7 +89,7 @@ export type Fiber = {
    * 存放了该fiber节点上的更新信息,其中HostRoot,FunctionComponent, HostComponent
    * 的updateQueue各不相同，函数的组件的updateQueue是一个存储effect的链表
    * 比如一个函数组件内有若干个useEffect，和useLayoutEffect，那每个effect
-   * 就会对应这样的一个数据结构 
+   * 就会对应这样的一个数据结构
    * {
    *  tag: HookFlags //如果是useEffect就是Passive如果是useLayoutEffect就是Layout
    *  create: () => (() => void) | void //useEffect的第一个参数
@@ -102,7 +102,7 @@ export type Fiber = {
    * 比如他可能长这样
    * ['children', 'new text', 'style', {background: 'red'}]
    * 代表了他对应的dom需要更新textContent和style属性
-  */
+   */
   updateQueue: unknown
 
   /**
@@ -131,6 +131,21 @@ export type Fiber = {
    * 如果是div,span则就是一个字符串
    */
   type: any
+
+  /**
+   * 表示了元素的类型，fiber的type属性会在reconcile的过程中改变，但是
+   * elementType是一直不变的，比如Memo组件的type在jsx对象中为
+   * {
+   *  $$typeof: REACT_MEMO_TYPE,
+   *  type,
+   *  compare: compare === undefined ? null : compare,
+   * }
+   * 在经过render阶段后会变为他包裹的函数，所以在render前后是不一致的
+   * 而我们在diff是需要判断一个元素的type有没有改变，
+   * 以判断能不能复用该节点，这时候elementType就派上用场
+   * 了，因为他是一直不变的
+   */
+  elementType: any
 
   /**
    * 描述fiber节点及其子树属性BitSet

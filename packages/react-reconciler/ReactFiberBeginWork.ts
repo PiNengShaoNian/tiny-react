@@ -13,9 +13,13 @@ import {
   HostRoot,
   HostText,
   IndeterminateComponent,
+  MemoComponent,
+  SimpleMemoComponent,
 } from './ReactWorkTags'
 import { includesSomeLane, Lanes, NoLanes } from './ReactFiberLane'
 import { ContentReset } from './ReactFiberFlags'
+import { isSimpleFunctionComponent } from './ReactFiber'
+import { shallowEqual } from '../shared/shallowEqual'
 
 let didReceiveUpdate = false
 
@@ -200,6 +204,73 @@ const updateHostComponent = (
   return workInProgress.child
 }
 
+const updateSimpleMemoComponent = (
+  current: Fiber | null,
+  workInProgress: Fiber,
+  Component: any,
+  nextProps: any,
+  updateLanes: Lanes,
+  renderLanes: Lanes
+): null | Fiber => {
+  if (current !== null) {
+    const prevProps = current.memoizedProps
+
+    if (shallowEqual(prevProps, nextProps)) {
+      didReceiveUpdate = false
+      if (!includesSomeLane(renderLanes, updateLanes)) {
+        workInProgress.lanes = current.lanes
+        return bailoutOnAlreadyFinishedWork(
+          current,
+          workInProgress,
+          renderLanes
+        )
+      }
+    }
+  }
+
+  return updateFunctionComponent(
+    current,
+    workInProgress,
+    Component,
+    nextProps,
+    renderLanes
+  )
+}
+
+const updateMemoComponent = (
+  current: Fiber | null,
+  workInProgress: Fiber,
+  Component: any,
+  nextProps: any,
+  updateLanes: Lanes,
+  renderLanes: Lanes
+): null | Fiber => {
+  if (current === null) {
+    const type = Component.type
+    if (
+      isSimpleFunctionComponent(type) &&
+      Component.compare === null &&
+      Component.defaultProps === undefined
+    ) {
+      let resolvedType = type
+
+      workInProgress.tag = SimpleMemoComponent
+      workInProgress.type = resolvedType
+
+      return updateSimpleMemoComponent(
+        current,
+        workInProgress,
+        resolvedType,
+        nextProps,
+        updateLanes,
+        renderLanes
+      )
+    }
+  }
+
+  throw new Error('Not Implement')
+}
+
 /**
  * 传入当前Fiber节点，创建子Fiber节点
  * @param current 当前节点
@@ -282,6 +353,29 @@ export const beginWork = (
       return updateHostComponent(current, workInProgress, renderLanes)
     case HostText:
       return null
+    case MemoComponent: {
+      const type = workInProgress.type
+      const unresolvedProps = workInProgress.pendingProps
+
+      return updateMemoComponent(
+        current,
+        workInProgress,
+        type,
+        unresolvedProps,
+        updateLanes,
+        renderLanes
+      )
+    }
+    case SimpleMemoComponent: {
+      return updateSimpleMemoComponent(
+        current,
+        workInProgress,
+        workInProgress.type,
+        workInProgress.pendingProps,
+        updateLanes,
+        renderLanes
+      )
+    }
   }
 
   throw new Error('Not Implement')

@@ -7,6 +7,7 @@ import {
   IndeterminateComponent,
   HostComponent,
   HostText,
+  MemoComponent,
 } from './ReactWorkTags'
 import {
   BlockingMode,
@@ -16,6 +17,7 @@ import {
 } from './ReactTypeOfMode'
 import { Flags, NoFlags } from './ReactFiberFlags'
 import { Lanes, NoLanes } from './ReactFiberLane'
+import { REACT_MEMO_TYPE } from '../shared/ReactSymbols'
 
 /**
  * 属性含义可查看react-reconciler\ReactInternalTypes.ts
@@ -37,6 +39,7 @@ class FiberNode {
   index: number = 0
   lanes = NoLanes
   childLanes = NoLanes
+  elementType = null
 
   constructor(
     public tag: WorkTag,
@@ -100,7 +103,7 @@ export const createWorkInProgress = (
      * 考虑下面的App组件，帮你理解上面的话
      * const TriggerUpdate = () => {
      *   const [count, setCount] = useState(0)
-     * 
+     *
      *   return (
      *     <div>
      *       {count}
@@ -144,7 +147,7 @@ export const createWorkInProgress = (
      * 进行render工作了，所以$('#static')节点的子节点只有在首次mount时会被创建一次，
      * 对于这些静态节点，在整个过程中，两颗fiber树始终指向相同的对象
      */
-    
+
     workInProgress = createFiber(
       current.tag,
       pendingProps,
@@ -152,6 +155,7 @@ export const createWorkInProgress = (
       current.mode
     )
 
+    workInProgress.elementType = current.elementType
     workInProgress.type = current.type
     workInProgress.stateNode = current.stateNode
 
@@ -194,15 +198,35 @@ export const createFiberFromTypeAndProps = (
   lanes: Lanes
 ) => {
   let fiberTag: WorkTag = IndeterminateComponent
+  let resolvedType = type
 
   if (typeof type === 'function') {
   } else if (typeof type === 'string') {
     fiberTag = HostComponent
+  } else {
+    getTag: switch (type) {
+      default: {
+        if (typeof type === 'object' && type !== null) {
+          switch (type.$$typeof) {
+            case REACT_MEMO_TYPE: {
+              fiberTag = MemoComponent
+              break getTag
+            }
+            default: {
+              throw new Error('Not Implement')
+            }
+          }
+        } else {
+          throw new Error('Not Implement')
+        }
+      }
+    }
   }
 
   const fiber = createFiber(fiberTag, pendingProps, key, mode)
-  fiber.type = type
+  fiber.type = resolvedType
   fiber.lanes = lanes
+  fiber.elementType = type
   return fiber
 }
 
@@ -240,4 +264,8 @@ export const createFiberFromText = (
   const fiber = createFiber(HostText, content, null, mode)
   fiber.lanes = lanes
   return fiber
+}
+
+export const isSimpleFunctionComponent = (type: any): boolean => {
+  return typeof type === 'function' && type.defaultProps === undefined
 }

@@ -8,6 +8,7 @@ type ListNode<TValue> = {
    * 该节点存储的值
    */
   value: TValue
+  next: ListNode<TValue>
 }
 
 type CircularLinkedList<TValue> = {

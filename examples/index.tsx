@@ -6,8 +6,10 @@ import { StateEffectDemo } from './StateAndEffect'
 import { TimeSlicingDemo } from './TimeSlicing'
 import { TodoList } from './TodoList'
 import { ChildrenReconcilerDemo } from './ChildrenReconciler'
+import { MemorizedComponentDemo } from './MemorizedComponent'
 
-createRoot(document.querySelector('#app')!).render(<TodoList />)
+// createRoot(document.querySelector('#app')!).render(<MemorizedComponentDemo />)
+// createRoot(document.querySelector('#app')!).render(<TodoList />)
 // createRoot(document.querySelector('#app')!).render(<PriorityScheduling />)
 // createRoot(document.querySelector('#app')!).render(<ChildrenReconcilerDemo />)
 // createRoot(document.querySelector('#app')!).render(<LayoutEffectDemo />)
