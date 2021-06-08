@@ -40,6 +40,7 @@ import {
   HostComponent,
   HostRoot,
   HostText,
+  SimpleMemoComponent,
 } from './ReactWorkTags'
 
 let nextEffect: Fiber | null = null
@@ -257,7 +258,8 @@ const commitHookEffectListUnmount = (flags: HookFlags, finishedWork: Fiber) => {
 
 const commitPassiveUnmountOnFiber = (finishedWork: Fiber): void => {
   switch (finishedWork.tag) {
-    case FunctionComponent: {
+    case FunctionComponent:
+    case SimpleMemoComponent: {
       commitHookEffectListUnmount(HookHasEffect | HookPassive, finishedWork)
       break
     }
@@ -292,7 +294,8 @@ const commitPassiveMountOnFiber = (
   finishedWork: Fiber
 ): void => {
   switch (finishedWork.tag) {
-    case FunctionComponent: {
+    case FunctionComponent:
+    case SimpleMemoComponent: {
       commitHookEffectListMount(HookPassive | HookHasEffect, finishedWork)
       break
     }

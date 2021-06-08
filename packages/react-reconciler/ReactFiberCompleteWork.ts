@@ -15,6 +15,7 @@ import {
   HostRoot,
   HostText,
   IndeterminateComponent,
+  MemoComponent,
   SimpleMemoComponent,
 } from './ReactWorkTags'
 
@@ -186,6 +187,7 @@ export const completeWork = (
     case IndeterminateComponent:
     case FunctionComponent:
     case SimpleMemoComponent:
+    case MemoComponent:
       bubbleProperties(workInProgress)
       return null
     case HostRoot: {

@@ -18,7 +18,11 @@ import {
 } from './ReactWorkTags'
 import { includesSomeLane, Lanes, NoLanes } from './ReactFiberLane'
 import { ContentReset } from './ReactFiberFlags'
-import { isSimpleFunctionComponent } from './ReactFiber'
+import {
+  createFiberFromTypeAndProps,
+  createWorkInProgress,
+  isSimpleFunctionComponent,
+} from './ReactFiber'
 import { shallowEqual } from '../shared/shallowEqual'
 
 let didReceiveUpdate = false
@@ -218,6 +222,65 @@ const updateSimpleMemoComponent = (
     if (shallowEqual(prevProps, nextProps)) {
       didReceiveUpdate = false
       if (!includesSomeLane(renderLanes, updateLanes)) {
+        //在beginWork中workInProgress pending中的lanes会被置为
+        //NoLanes，进入该逻辑表明，这轮render以workInProgress为根的子树没有工作要做
+        //但是可能他下一轮render可能有工作要做，
+        //为了保证它pending中的工作能在下一轮render中，能被正常的执行
+        //需要在这里将他current节点里的lanes赋值给workInProgress，以确保他待会
+        //他pending中的lanes会在completeWork中被冒泡到root上
+        /**
+         * 考虑以下代码
+         * let hasDispatched = false
+         * const Foo = memo(() => {
+         *   const [list, setList] = useState<number[]>([])
+         *
+         *   setTimeout(() => {
+         *     if (hasDispatched) return
+         *
+         *     hasDispatched = true
+         *     setList(Array.from({ length: 1e4 }, (_, i) => i))
+         *   }, 1000)
+         *
+         *   return (
+         *     <div>
+         *       {list.map((v) => (
+         *         <div>{v}</div>
+         *       ))}
+         *     </div>
+         *   )
+         * })
+         *
+         * const App = () => {
+         *   const [count, setCount] = useState(0)
+         *
+         *   useEffect(() => {
+         *     setTimeout(() => {
+         *       const dispatcher = document.getElementById('dispatcher')
+         *       dispatcher?.click()
+         *     }, 1030)
+         *   }, [])
+         *   return (
+         *     <div>
+         *       <button
+         *         id="dispatcher"
+         *         onClick={() => {
+         *           setCount(1)
+         *         }}
+         *       >
+         *         {count}
+         *       </button>
+         *       <Foo />
+         *     </div>
+         *   )
+         * }
+         * 当进行Foo组件的渲染时，它会被App组件内产生的更高的优先级的更新打断，
+         * 所以会先开始以renderLanes为1开始一轮更新，而此时Foo组件的UpdateLanes为
+         * 16,如果没有memo组件的情况下他不会提前bailout,而会继续render过程
+         * 在执行updateReducer时处理他updateQueue上因优先级不足而被跳过的update而被打上相应的lanes
+         * 而现在他被包在memo里面所以他会进入这里的逻辑，
+         * 而我们在这里提前进行bailout就得手动设置他workInProgress上的lanes
+         * 如果我们运行上面的代码，并且没有下面这行的代码的话，Foo组件内产生的更新就会好像消失了一样
+         */
         workInProgress.lanes = current.lanes
         return bailoutOnAlreadyFinishedWork(
           current,
@@ -266,9 +329,36 @@ const updateMemoComponent = (
         renderLanes
       )
     }
+
+    const child = createFiberFromTypeAndProps(
+      Component.type,
+      null,
+      nextProps,
+      workInProgress.mode,
+      renderLanes
+    )
+
+    child.return = workInProgress
+    workInProgress.child = child
+    return child
   }
 
-  throw new Error('Not Implement')
+  const currentChild = current.child as Fiber
+
+  if (!includesSomeLane(updateLanes, renderLanes)) {
+    const prevProps = currentChild.memoizedProps
+    let compare = Component.compare
+    compare = compare !== null ? compare : shallowEqual
+    if (compare(prevProps, nextProps)) {
+      return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes)
+    }
+  }
+
+  const newChild = createWorkInProgress(currentChild, nextProps)
+  newChild.return = workInProgress
+  workInProgress.child = newChild
+
+  return newChild
 }
 
 /**
@@ -305,6 +395,8 @@ export const beginWork = (
         case HostText:
           break
         case FunctionComponent:
+          break
+        case SimpleMemoComponent:
           break
         default: {
           throw new Error('Not Implement')
