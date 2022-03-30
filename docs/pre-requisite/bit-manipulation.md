@@ -137,5 +137,5 @@ const getDecimalValue = (head: number[]): number => {
 ___
 
 ## 相关引用
-- [程序员面试金典 第6版 P94 位操做](http://product.dangdang.com/27941258.html)
+- [程序员面试金典 第6版 P94 位操作](http://product.dangdang.com/27941258.html)
 - [leetcode 1290. 二进制链表转整数](https://leetcode-cn.com/problems/convert-binary-number-in-a-linked-list-to-integer/)
